@@ -25,10 +25,9 @@ export const ctxFiles = pgTable("ctx_files", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => generateId()),
-  /** The extraction that produced this CTX file */
+  /** The extraction that produced this CTX file (null for pre-built CTXs) */
   extractionId: text("extraction_id")
-    .references(() => extractions.id, { onDelete: "cascade" })
-    .notNull(),
+    .references(() => extractions.id, { onDelete: "cascade" }),
   /** Human-readable name */
   name: text("name").notNull(),
   /** Primary domain (e.g. "Technology procurement") */

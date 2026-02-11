@@ -25,6 +25,7 @@ export interface PipelineEvent {
 export type PipelineEventData =
   | IngestProgressData
   | ExtractProgressData
+  | Mode2ProgressData
   | SynthesiseProgressData
   | ValidateProgressData;
 
@@ -48,6 +49,16 @@ export interface ExtractProgressData {
   currentSection?: string;
   /** Tokens used so far */
   tokensUsed?: number;
+}
+
+export interface Mode2ProgressData {
+  type: "mode2";
+  /** Current pass number (1-5) */
+  pass: number;
+  /** Total passes */
+  totalPasses: number;
+  /** Additional pass-specific data */
+  [key: string]: unknown;
 }
 
 export interface SynthesiseProgressData {
