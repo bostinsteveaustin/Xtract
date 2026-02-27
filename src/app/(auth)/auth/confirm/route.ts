@@ -5,6 +5,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const token_hash = searchParams.get("token_hash");
   const type = searchParams.get("type") as "email" | "magiclink" | null;
+  const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/workflows";
 
   const redirectTo = request.nextUrl.clone();
@@ -12,30 +13,39 @@ export async function GET(request: NextRequest) {
   redirectTo.searchParams.delete("token_hash");
   redirectTo.searchParams.delete("type");
   redirectTo.searchParams.delete("next");
+  redirectTo.searchParams.delete("code");
 
-  if (token_hash && type) {
-    const response = NextResponse.redirect(redirectTo);
+  const response = NextResponse.redirect(redirectTo);
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll: () => request.cookies.getAll(),
-          setAll: (cookiesToSet) => {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              response.cookies.set(name, value, options)
-            );
-          },
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: (cookiesToSet) => {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
         },
-      }
-    );
+      },
+    }
+  );
 
+  // PKCE flow: exchange code for session
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error) {
+      return response;
+    }
+  }
+
+  // Implicit flow: verify OTP with token_hash
+  if (token_hash && type) {
     const { error } = await supabase.auth.verifyOtp({
       type,
       token_hash,
     });
-
     if (!error) {
       return response;
     }
