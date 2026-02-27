@@ -31,9 +31,7 @@
     "zod": "^4.3.6"
   },
   "pnpm": {
-    "onlyBuiltDependencies": [
-      "supabase"
-    ]
+    "onlyBuiltDependencies": []
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
