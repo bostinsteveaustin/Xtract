@@ -6,17 +6,20 @@ export type NodeStatus = 'idle' | 'running' | 'completed' | 'error';
 // ─── Node-Specific Config Data ───────────────────────────
 
 export interface DocumentIngestNodeData {
+  label?: string;
   documentSetId?: string;
-  uploadedFileCount: number;
-  totalFileSize: number;
-  fileNames: string[];
+  uploadedFileCount?: number;
+  totalFileSize?: number;
+  fileNames?: string[];
   supportedTypes: string[];
 }
 
 export interface CTXConfigurationNodeData {
+  label?: string;
   selectedCtxId?: string;
   selectedCtxName?: string;
-  availableCtxConfigs: Array<{
+  defaultCtxId?: string;
+  availableCtxConfigs?: Array<{
     id: string;
     name: string;
     version: string;
@@ -25,6 +28,7 @@ export interface CTXConfigurationNodeData {
 }
 
 export interface ControlExtractionNodeData {
+  label?: string;
   extractionRunId?: string;
   documentSetId?: string;
   ctxConfigurationId?: string;
@@ -34,7 +38,10 @@ export interface ControlExtractionNodeData {
 }
 
 export interface WorkbookExportNodeData {
-  exportFormat: 'xlsx' | 'icml';
+  label?: string;
+  exportFormat?: 'xlsx' | 'icml';
+  defaultFormat?: string;
+  formats?: string[];
   extractionRunId?: string;
   downloadUrl?: string;
   exportedFileName?: string;
