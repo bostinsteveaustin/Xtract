@@ -1,25 +1,19 @@
-import { neon } from "@neondatabase/serverless";
-import { drizzle, type NeonHttpDatabase } from "drizzle-orm/neon-http";
-import * as schema from "./schema";
-import * as relations from "./schema/relations";
+// Database types adapter for Supabase
+// Maps old Drizzle/Neon types to Supabase types
 
-// Lazy singleton — avoids neon() failing at build time when DATABASE_URL is empty
-let _db: NeonHttpDatabase<typeof schema & typeof relations> | null = null;
+import type { Database } from "@/lib/supabase/types";
 
-function getDb() {
-  if (!_db) {
-    const sql = neon(process.env.DATABASE_URL!);
-    _db = drizzle(sql, {
-      schema: { ...schema, ...relations },
-    });
-  }
-  return _db;
-}
+export type Workspace = Database["public"]["Tables"]["workspaces"]["Row"];
+export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+export type CTXConfiguration = Database["public"]["Tables"]["ctx_configurations"]["Row"];
+export type DocumentSet = Database["public"]["Tables"]["document_sets"]["Row"];
+export type Document = Database["public"]["Tables"]["documents"]["Row"];
+export type Workflow = Database["public"]["Tables"]["workflows"]["Row"];
+export type WorkflowRun = Database["public"]["Tables"]["workflow_runs"]["Row"];
+export type ExtractedObject = Database["public"]["Tables"]["extracted_objects"]["Row"];
+export type ExtractionDecision = Database["public"]["Tables"]["extraction_decisions"]["Row"];
 
-export const db = new Proxy({} as NeonHttpDatabase<typeof schema & typeof relations>, {
-  get(_target, prop, receiver) {
-    return Reflect.get(getDb(), prop, receiver);
-  },
-});
-
-export type Database = NeonHttpDatabase<typeof schema & typeof relations>;
+// Aliases for backward compatibility with old code
+export type CTXFileRecord = CTXConfiguration;
+export type DomainObject = ExtractedObject;
+export type Source = Document;

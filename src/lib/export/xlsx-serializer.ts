@@ -1,7 +1,7 @@
 // XLSX export serializer
 // Generates Excel workbook from extracted domain objects
 
-import type { DomainObject } from "@/lib/db/schema";
+import type { DomainObject } from "@/lib/db";
 import type { ObjectTypeSpec } from "@/types/ctx";
 
 /**
@@ -25,7 +25,7 @@ export async function generateXLSX(
 
   // Filter out metadata objects
   const realObjects = domainObjectRecords.filter(
-    (o) => !o.objectType.startsWith("_")
+    (o) => !o.object_type.startsWith("_")
   );
 
   // ─── Sheet 1: Contract Terms ───────────────────────────────────────
@@ -62,13 +62,13 @@ export async function generateXLSX(
 
   // Add data rows
   for (const obj of realObjects) {
-    const data = obj.objectData as Record<string, unknown>;
+    const data = obj.attributes as Record<string, unknown>;
     const row: Record<string, unknown> = {
-      objectID: obj.objectIcmlId ?? obj.id,
+      objectID: obj.object_icml_id ?? obj.id,
       confidence: obj.confidence ? `${obj.confidence}%` : "",
-      rubricScore: obj.rubricScore ?? "",
-      rubricLevel: obj.rubricLevel ?? "",
-      sourceRef: obj.sourceRef ?? "",
+      rubricScore: obj.rubric_score ?? "",
+      rubricLevel: obj.rubric_level ?? "",
+      sourceRef: obj.source_clause_text ?? "",
     };
 
     for (const attr of objectSpec.attributes) {
@@ -129,11 +129,11 @@ export async function generateXLSX(
   const headerRow2 = summarySheet.getRow(1);
   headerRow2.font = { bold: true };
 
-  const scoredObjects = realObjects.filter((o) => o.rubricScore != null);
+  const scoredObjects = realObjects.filter((o) => o.rubric_score != null);
   const avgScore =
     scoredObjects.length > 0
       ? (
-          scoredObjects.reduce((s, o) => s + (o.rubricScore ?? 0), 0) /
+          scoredObjects.reduce((s, o) => s + (o.rubric_score ?? 0), 0) /
           scoredObjects.length
         ).toFixed(1)
       : "N/A";
@@ -159,7 +159,7 @@ export async function generateXLSX(
   // Score distribution
   const distribution: Record<number, number> = {};
   for (const o of scoredObjects) {
-    const score = o.rubricScore ?? 0;
+    const score = o.rubric_score ?? 0;
     distribution[score] = (distribution[score] ?? 0) + 1;
   }
   for (let i = 1; i <= 5; i++) {

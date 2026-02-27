@@ -1,7 +1,7 @@
 // iCML JSON export serializer
 // Assembles extraction results into ICMLExtractionOutput format
 
-import type { DomainObject, Source, CTXFileRecord } from "@/lib/db/schema";
+import type { DomainObject, Source, CTXFileRecord } from "@/lib/db";
 import { CTX_SPEC_VERSION, ICML_VERSION, XTRACT_TOOL_ID } from "@/lib/utils/constants";
 
 export interface ICMLExportOutput {
@@ -64,12 +64,12 @@ export function serializeToICML(
 ): ICMLExportOutput {
   // Separate real objects from entity metadata
   const realObjects = domainObjectRecords.filter(
-    (o) => !o.objectType.startsWith("_")
+    (o) => !o.object_type.startsWith("_")
   );
   const entityMeta = domainObjectRecords.find(
-    (o) => o.objectType === "_entities"
+    (o) => o.object_type === "_entities"
   );
-  const entityData = entityMeta?.objectData as {
+  const entityData = entityMeta?.attributes as {
     documentTitle?: string;
     entities?: Array<{
       name: string;
@@ -91,16 +91,16 @@ export function serializeToICML(
   // Build artefacts (the source documents)
   const artefacts = sourceDocs.map((s, i) => ({
     artefactID: `icml:ART-${String(i + 1).padStart(3, "0")}`,
-    name: s.fileName,
-    type: s.fileType,
-    source: s.blobUrl,
+    name: s.filename,
+    type: s.file_type,
+    source: s.storage_path,
   }));
 
   // Build objects
   const objects = realObjects.map((o) => ({
-    "@type": o.objectType,
-    objectID: o.objectIcmlId ?? o.id,
-    attributes: o.objectData as Record<string, unknown>,
+    "@type": o.object_type,
+    objectID: o.object_icml_id ?? o.id,
+    attributes: o.attributes as Record<string, unknown>,
     provenance: (o.provenance as {
       sourceArtefact: string;
       sourceClause: string;
@@ -109,26 +109,26 @@ export function serializeToICML(
       ctxReference: string;
     }) ?? {
       sourceArtefact: "unknown",
-      sourceClause: o.sourceRef ?? "unknown",
+      sourceClause: o.source_clause_text ?? "unknown",
       confidence: "medium",
       extractionMethod: "mode2-schema-driven",
       ctxReference: ctxFile.id,
     },
-    rubricScore: o.rubricScore
+    rubricScore: o.rubric_score
       ? {
-          score: o.rubricScore,
-          level: o.rubricLevel ?? "Unknown",
-          rationale: o.scoringRationale ?? "",
+          score: o.rubric_score,
+          level: o.rubric_level ?? "Unknown",
+          rationale: o.scoring_rationale ?? "",
         }
       : undefined,
   }));
 
   // Quality summary
-  const scoredObjects = realObjects.filter((o) => o.rubricScore != null);
+  const scoredObjects = realObjects.filter((o) => o.rubric_score != null);
   const avgScore =
     scoredObjects.length > 0
       ? Math.round(
-          scoredObjects.reduce((s, o) => s + (o.rubricScore ?? 0), 0) /
+          scoredObjects.reduce((s, o) => s + (o.rubric_score ?? 0), 0) /
             scoredObjects.length
         )
       : 0;
@@ -142,7 +142,7 @@ export function serializeToICML(
 
   const scoreDistribution: Record<string, number> = {};
   for (const o of scoredObjects) {
-    const score = String(o.rubricScore ?? 0);
+    const score = String(o.rubric_score ?? 0);
     scoreDistribution[score] = (scoreDistribution[score] ?? 0) + 1;
   }
 
@@ -150,14 +150,14 @@ export function serializeToICML(
     "@context": `icml:v${ICML_VERSION}`,
     extractionMetadata: {
       extractionId,
-      ctxReference: ctxFile.contextId ?? ctxFile.id,
+      ctxReference: ctxFile.id,
       ctxVersion: CTX_SPEC_VERSION,
       icmlVersion: ICML_VERSION,
       extractionDate: new Date().toISOString(),
       tool: XTRACT_TOOL_ID,
       sourceDocuments: sourceDocs.map((s) => ({
-        fileName: s.fileName,
-        fileType: s.fileType,
+        fileName: s.filename,
+        fileType: s.file_type,
       })),
     },
     entities,
