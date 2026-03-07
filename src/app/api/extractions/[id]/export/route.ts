@@ -8,10 +8,12 @@ import {
   ctxFiles,
   ctxSections,
   domainObjects,
+  objectRelationships,
 } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { serializeToICML } from "@/lib/export/icml-serializer";
 import { generateXLSX } from "@/lib/export/xlsx-serializer";
+import { serializeToGraph } from "@/lib/export/graph-serializer";
 import type { ObjectTypeSpec, ObjectsSection } from "@/types/ctx";
 
 export async function GET(
@@ -38,12 +40,16 @@ export async function GET(
     }
 
     // Load related data
-    const [sourceDocs, objects] = await Promise.all([
+    const [sourceDocs, objects, relationships] = await Promise.all([
       db.select().from(sources).where(eq(sources.extractionId, id)),
       db
         .select()
         .from(domainObjects)
         .where(eq(domainObjects.extractionId, id)),
+      db
+        .select()
+        .from(objectRelationships)
+        .where(eq(objectRelationships.extractionId, id)),
     ]);
 
     // Load CTX file
@@ -86,11 +92,16 @@ export async function GET(
         );
       }
 
-      const buffer = await generateXLSX(objects, objectSpec, {
-        extractionId: id,
-        ctxName: ctxFile.name,
-        sourceFileName: sourceDocs[0]?.fileName ?? "Unknown",
-      });
+      const buffer = await generateXLSX(
+        objects,
+        objectSpec,
+        {
+          extractionId: id,
+          ctxName: ctxFile.name,
+          sourceFileName: sourceDocs[0]?.fileName ?? "Unknown",
+        },
+        relationships
+      );
 
       return new Response(new Uint8Array(buffer), {
         headers: {
@@ -101,8 +112,25 @@ export async function GET(
       });
     }
 
+    // Graph export (Neo4j-compatible nodes + edges)
+    if (format === "graph") {
+      const graphOutput = serializeToGraph(id, objects, relationships);
+      return new Response(JSON.stringify(graphOutput, null, 2), {
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Disposition": `attachment; filename="extraction-${id}.graph.json"`,
+        },
+      });
+    }
+
     // Default: JSON (iCML format)
-    const icmlOutput = serializeToICML(id, sourceDocs, objects, ctxFile);
+    const icmlOutput = serializeToICML(
+      id,
+      sourceDocs,
+      objects,
+      ctxFile,
+      relationships
+    );
 
     return new Response(JSON.stringify(icmlOutput, null, 2), {
       headers: {

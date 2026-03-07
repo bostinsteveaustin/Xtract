@@ -260,6 +260,12 @@ export type ICMLPrimitive =
   | "Transaction";
 
 export type ObjectRelationshipType =
+  | "supersedes"
+  | "superseded_by"
+  | "related_to"
+  | "duplicates"
+  | "categorised_under"
+  | "implements"
   | "depends_on"
   | "conflicts_with"
   | "references"

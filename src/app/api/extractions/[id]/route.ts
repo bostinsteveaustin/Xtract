@@ -7,6 +7,7 @@ import {
   sources,
   pipelineRuns,
   domainObjects,
+  objectRelationships,
 } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 
@@ -30,7 +31,7 @@ export async function GET(
       );
     }
 
-    const [sourceDocs, runs, objects] = await Promise.all([
+    const [sourceDocs, runs, objects, relationships] = await Promise.all([
       db.select().from(sources).where(eq(sources.extractionId, id)),
       db
         .select()
@@ -41,6 +42,10 @@ export async function GET(
         .select()
         .from(domainObjects)
         .where(eq(domainObjects.extractionId, id)),
+      db
+        .select()
+        .from(objectRelationships)
+        .where(eq(objectRelationships.extractionId, id)),
     ]);
 
     // Filter out metadata objects for the summary
@@ -73,6 +78,7 @@ export async function GET(
       pipelineRuns: runs,
       domainObjects: realObjects,
       entities: entityMeta?.objectData ?? null,
+      relationships,
       summary,
     });
   } catch (error) {

@@ -554,6 +554,27 @@ export const VENDOR_MANAGEMENT_CTX: CTXFile = {
               description:
                 "Terms may conflict (e.g., a termination for convenience clause may conflict with a minimum commitment period).",
             },
+            {
+              fromObject: "ContractTerm",
+              relationship: "supersedes",
+              toObject: "ContractTerm",
+              description:
+                "A term may supersede another (e.g., an amendment replacing an earlier clause, or a schedule overriding a general term).",
+            },
+            {
+              fromObject: "ContractTerm",
+              relationship: "references",
+              toObject: "ContractTerm",
+              description:
+                "A term references another without creating a dependency (e.g., a notice clause mentioning the governing law clause for jurisdictional context).",
+            },
+            {
+              fromObject: "ContractTerm",
+              relationship: "implements",
+              toObject: "ContractTerm",
+              description:
+                "A term implements a higher-level obligation (e.g., a specific SLA target implements a general service quality requirement).",
+            },
           ],
           extractionGuidance:
             "Extract from the ENTIRE document including schedules, appendices, and general provisions sections. A typical vendor management contract yields 15-40 ContractTerm objects. For each term:\n\n1. IDENTIFICATION: Look for numbered clauses and sub-clauses. Each substantive provision is typically a separate term. A single clause may contain multiple terms if it addresses different obligations.\n\n2. CLAUSE TEXT: Capture the actual text, not a paraphrase. For very long clauses (>500 words), capture the operative provision.\n\n3. PARTY RESOLUTION: Use the defined party names from the contract (e.g., 'the Supplier', 'the Customer', 'the Service Provider'). Map these to the actual entities identified in Pass 2.\n\n4. RISK ASSESSMENT: Consider risk FROM THE PERSPECTIVE OF THE PARTY RECEIVING THIS ANALYSIS (typically the buyer/customer). High risk = material financial exposure or operational disruption. Medium risk = moderate exposure with some mitigation. Low risk = standard commercial terms with adequate protection.\n\n5. DEPENDENCIES: After extracting all terms, look for cross-references between them. Common patterns: SLA → SLA penalty, indemnity → limitation of liability, termination → notice period, payment → late payment penalty.\n\n6. DO NOT SKIP: General provisions, boilerplate, miscellaneous clauses, schedules, appendices. These often contain material terms (governing law, assignment, dispute resolution).",

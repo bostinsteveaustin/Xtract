@@ -5,11 +5,13 @@ import { ctxFiles } from "./ctx-files";
 import { ctxSections } from "./ctx-sections";
 import { pipelineRuns } from "./pipeline-runs";
 import { domainObjects } from "./domain-objects";
+import { objectRelationships } from "./object-relationships";
 
 export const extractionRelations = relations(extractions, ({ many }) => ({
   sources: many(sources),
   pipelineRuns: many(pipelineRuns),
   domainObjects: many(domainObjects),
+  objectRelationships: many(objectRelationships),
 }));
 
 export const sourceRelations = relations(sources, ({ one }) => ({
@@ -51,3 +53,13 @@ export const domainObjectRelations = relations(domainObjects, ({ one }) => ({
     references: [ctxFiles.id],
   }),
 }));
+
+export const objectRelationshipRelations = relations(
+  objectRelationships,
+  ({ one }) => ({
+    extraction: one(extractions, {
+      fields: [objectRelationships.extractionId],
+      references: [extractions.id],
+    }),
+  })
+);

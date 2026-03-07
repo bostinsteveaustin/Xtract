@@ -16,7 +16,14 @@ import {
 } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Download, FileJson, FileSpreadsheet, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Download,
+  FileJson,
+  FileSpreadsheet,
+  ChevronDown,
+  ChevronUp,
+  Network,
+} from "lucide-react";
 
 const riskColors: Record<string, string> = {
   high: "bg-red-100 text-red-700",
@@ -54,7 +61,7 @@ export default function ReviewPage({
     return <p className="text-muted-foreground">Extraction not found.</p>;
   }
 
-  const { extraction, domainObjects, entities, summary } = data;
+  const { extraction, domainObjects, entities, relationships, summary } = data;
 
   return (
     <div className="space-y-6">
@@ -85,6 +92,15 @@ export default function ReviewPage({
             >
               <FileSpreadsheet className="mr-2 h-4 w-4" />
               Excel
+            </a>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <a
+              href={`/api/extractions/${id}/export?format=graph`}
+              download
+            >
+              <Network className="mr-2 h-4 w-4" />
+              Graph
             </a>
           </Button>
         </div>
@@ -136,6 +152,9 @@ export default function ReviewPage({
           </TabsTrigger>
           <TabsTrigger value="entities">
             Entities ({summary.entitiesFound})
+          </TabsTrigger>
+          <TabsTrigger value="relationships">
+            Relationships ({relationships.length})
           </TabsTrigger>
           <TabsTrigger value="quality">Quality Details</TabsTrigger>
         </TabsList>
@@ -272,18 +291,78 @@ export default function ReviewPage({
                                     </p>
                                   </div>
                                 )}
-                                {d.dependencies != null && (
-                                  <div className="md:col-span-2">
-                                    <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
-                                      Dependencies
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                      {Array.isArray(d.dependencies)
-                                        ? (d.dependencies as string[]).join(", ")
-                                        : String(d.dependencies)}
-                                    </p>
-                                  </div>
-                                )}
+                                {(() => {
+                                  const outgoing = relationships.filter(
+                                    (r) =>
+                                      r.fromObjectIcmlId === obj.objectIcmlId
+                                  );
+                                  const incoming = relationships.filter(
+                                    (r) =>
+                                      r.toObjectIcmlId === obj.objectIcmlId
+                                  );
+                                  if (
+                                    outgoing.length === 0 &&
+                                    incoming.length === 0
+                                  )
+                                    return null;
+                                  return (
+                                    <div className="md:col-span-2">
+                                      <p className="mb-2 text-xs font-medium uppercase text-muted-foreground">
+                                        Relationships
+                                      </p>
+                                      <div className="space-y-1">
+                                        {outgoing.map((r) => (
+                                          <div
+                                            key={r.id}
+                                            className="flex items-center gap-2 text-sm"
+                                          >
+                                            <Badge
+                                              variant="outline"
+                                              className="text-xs"
+                                            >
+                                              {r.relationshipType.replace(
+                                                /_/g,
+                                                " "
+                                              )}
+                                            </Badge>
+                                            <span>
+                                              {r.direction === "bidirectional"
+                                                ? "↔"
+                                                : "→"}
+                                            </span>
+                                            <span className="font-mono text-xs">
+                                              {r.toObjectIcmlId}
+                                            </span>
+                                            <span className="text-muted-foreground">
+                                              ({r.confidence}%)
+                                            </span>
+                                          </div>
+                                        ))}
+                                        {incoming.map((r) => (
+                                          <div
+                                            key={r.id}
+                                            className="flex items-center gap-2 text-sm text-muted-foreground"
+                                          >
+                                            <Badge
+                                              variant="secondary"
+                                              className="text-xs"
+                                            >
+                                              {r.relationshipType.replace(
+                                                /_/g,
+                                                " "
+                                              )}
+                                            </Badge>
+                                            <span>←</span>
+                                            <span className="font-mono text-xs">
+                                              {r.fromObjectIcmlId}
+                                            </span>
+                                            <span>({r.confidence}%)</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             </TableCell>
                           </TableRow>
@@ -347,6 +426,62 @@ export default function ReviewPage({
               ) : (
                 <p className="py-8 text-center text-muted-foreground">
                   No entity data available.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Relationships Tab */}
+        <TabsContent value="relationships">
+          <Card>
+            <CardContent className="pt-4">
+              {relationships.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>From</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Dir</TableHead>
+                      <TableHead>To</TableHead>
+                      <TableHead>Confidence</TableHead>
+                      <TableHead>Source</TableHead>
+                      <TableHead>Description</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {relationships.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="font-mono text-xs">
+                          {r.fromObjectIcmlId}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {r.relationshipType.replace(/_/g, " ")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {r.direction === "bidirectional" ? "↔" : "→"}
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
+                          {r.toObjectIcmlId}
+                        </TableCell>
+                        <TableCell>{r.confidence}%</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {r.source.replace(/_/g, " ")}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="max-w-xs text-sm text-muted-foreground">
+                          {r.description ?? "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <p className="py-8 text-center text-muted-foreground">
+                  No relationships identified.
                 </p>
               )}
             </CardContent>

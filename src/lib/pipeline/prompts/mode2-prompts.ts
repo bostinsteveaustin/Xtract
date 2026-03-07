@@ -195,7 +195,15 @@ export function buildRelationshipPrompt(extractedObjects: string): string {
 1. Identify dependencies: terms that reference or depend on other terms (e.g., SLA penalty depends on SLA definition).
 2. Identify conflicts: terms that may contradict each other (e.g., termination for convenience vs. minimum commitment period).
 3. Identify cross-references: terms that reference schedules, appendices, or other clauses by number.
-4. For each relationship, provide a brief description of how the objects are related.
+4. Identify supersession: terms that replace or update earlier terms (e.g., an amendment superseding an original clause).
+5. Identify implementation: terms that implement a higher-level obligation (e.g., a specific SLA implements a general quality requirement).
+6. Identify duplicates: terms that cover essentially the same obligation in different wording.
+
+For each relationship:
+- **Type**: Choose from: supersedes, superseded_by, related_to, duplicates, categorised_under, implements, depends_on, conflicts_with, references
+- **Direction**: "unidirectional" (A affects B but not vice versa) or "bidirectional" (mutual relationship, e.g., two clauses that conflict with each other)
+- **Confidence**: Score 0-100. Use 90-100 for explicit cross-references stated in the text, 60-89 for strongly implied relationships, below 60 for inferred connections.
+- **Description**: Brief explanation of how the objects are related.
 
 ## Extracted Contract Terms
 

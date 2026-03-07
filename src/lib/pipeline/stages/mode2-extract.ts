@@ -4,7 +4,12 @@
 import { generateObject } from "ai";
 import { extractionModel } from "@/lib/ai/client";
 import { db } from "@/lib/db";
-import { sources, ctxSections, domainObjects } from "@/lib/db/schema";
+import {
+  sources,
+  ctxSections,
+  domainObjects,
+  objectRelationships,
+} from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { chunkText } from "@/lib/documents/chunker";
 import {
@@ -379,6 +384,8 @@ export const mode2ExtractStage: PipelineStageHandler = {
           fromObjectId: string;
           toObjectId: string;
           relationshipType: string;
+          direction: string;
+          confidence: number;
           description: string;
         }>;
         crossReferences: Array<{
@@ -388,9 +395,32 @@ export const mode2ExtractStage: PipelineStageHandler = {
         }>;
       };
 
-      // Update objects with dependencies
+      // Write structured relationship edges to the DB
       if (relResult.relationships) {
         for (const rel of relResult.relationships) {
+          await db.insert(objectRelationships).values({
+            extractionId: ctx.extractionId,
+            fromObjectIcmlId: rel.fromObjectId,
+            toObjectIcmlId: rel.toObjectId,
+            relationshipType: rel.relationshipType as
+              | "supersedes"
+              | "superseded_by"
+              | "related_to"
+              | "duplicates"
+              | "categorised_under"
+              | "implements"
+              | "depends_on"
+              | "conflicts_with"
+              | "references",
+            direction: (rel.direction ?? "unidirectional") as
+              | "unidirectional"
+              | "bidirectional",
+            confidence: rel.confidence ?? 70,
+            source: "extraction",
+            description: rel.description,
+          });
+
+          // Backward compatibility: still push to objectData.dependencies
           const sourceObj = allExtractedObjects.find(
             (o) => o.objectID === rel.fromObjectId
           );

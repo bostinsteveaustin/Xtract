@@ -145,6 +145,33 @@ export interface ExtractionOutputMetadata {
   }>;
 }
 
+// ─── Relationship Edges (iCML v4.0 E-02) ────────────────────────────
+
+export type ICMLRelationshipType =
+  | "supersedes"
+  | "superseded_by"
+  | "related_to"
+  | "duplicates"
+  | "categorised_under"
+  | "implements"
+  | "depends_on"
+  | "conflicts_with"
+  | "references";
+
+export type RelationshipDirection = "unidirectional" | "bidirectional";
+export type RelationshipSource = "extraction" | "analysis_pass" | "human_review";
+
+/** A typed, directional edge between two iCML objects */
+export interface ICMLRelationship {
+  fromObjectId: string;
+  toObjectId: string;
+  relationshipType: ICMLRelationshipType;
+  direction: RelationshipDirection;
+  confidence: number; // 0-100
+  source: RelationshipSource;
+  description?: string;
+}
+
 /** Complete iCML Extraction Profile output (Mode 2) */
 export interface ICMLExtractionOutput {
   extractionMetadata: ExtractionOutputMetadata;
@@ -152,6 +179,7 @@ export interface ICMLExtractionOutput {
   entities: ICMLEntity[];
   artefacts: ICMLArtefact[];
   objects: ExtractedDomainObject[];
+  relationships: ICMLRelationship[];
 }
 
 // ─── Serialisation Tiers (iCML v4.0 Section 6.1) ───────────────────

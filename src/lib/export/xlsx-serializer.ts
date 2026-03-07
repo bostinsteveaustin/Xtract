@@ -1,7 +1,7 @@
 // XLSX export serializer
 // Generates Excel workbook from extracted domain objects
 
-import type { DomainObject } from "@/lib/db/schema";
+import type { DomainObject, ObjectRelationshipRecord } from "@/lib/db/schema";
 import type { ObjectTypeSpec } from "@/types/ctx";
 
 /**
@@ -15,7 +15,8 @@ export async function generateXLSX(
     extractionId: string;
     ctxName: string;
     sourceFileName: string;
-  }
+  },
+  relationshipRecords: ObjectRelationshipRecord[] = []
 ): Promise<Buffer> {
   // Dynamic import to avoid loading exceljs on every API call
   const ExcelJS = await import("exceljs");
@@ -171,6 +172,40 @@ export async function generateXLSX(
 
   for (const row of summaryData) {
     summarySheet.addRow(row);
+  }
+
+  // ─── Sheet 3: Relationships ─────────────────────────────────────────
+  if (relationshipRecords.length > 0) {
+    const relSheet = workbook.addWorksheet("Relationships");
+    relSheet.columns = [
+      { header: "From Object", key: "from", width: 22 },
+      { header: "To Object", key: "to", width: 22 },
+      { header: "Type", key: "type", width: 18 },
+      { header: "Direction", key: "direction", width: 16 },
+      { header: "Confidence", key: "confidence", width: 14 },
+      { header: "Source", key: "source", width: 16 },
+      { header: "Description", key: "description", width: 45 },
+    ];
+
+    const relHeaderRow = relSheet.getRow(1);
+    relHeaderRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    relHeaderRow.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF1F2937" },
+    };
+
+    for (const rel of relationshipRecords) {
+      relSheet.addRow({
+        from: rel.fromObjectIcmlId,
+        to: rel.toObjectIcmlId,
+        type: rel.relationshipType.replace(/_/g, " "),
+        direction: rel.direction === "bidirectional" ? "↔ Bidirectional" : "→ Unidirectional",
+        confidence: `${rel.confidence}%`,
+        source: rel.source.replace(/_/g, " "),
+        description: rel.description ?? "",
+      });
+    }
   }
 
   // Write to buffer

@@ -58,6 +58,18 @@ interface ExtractionDetail {
       roles: string[];
     }>;
   } | null;
+  relationships: Array<{
+    id: string;
+    extractionId: string;
+    fromObjectIcmlId: string;
+    toObjectIcmlId: string;
+    relationshipType: string;
+    direction: string;
+    confidence: number;
+    source: string;
+    description: string | null;
+    createdAt: string;
+  }>;
   summary: {
     totalObjects: number;
     averageScore: number;

@@ -41,3 +41,12 @@ export {
   type DomainObject,
   type NewDomainObject,
 } from "./domain-objects";
+
+export {
+  objectRelationships,
+  relationshipTypeEnum,
+  relationshipDirectionEnum,
+  relationshipSourceEnum,
+  type ObjectRelationshipRecord,
+  type NewObjectRelationship,
+} from "./object-relationships";
