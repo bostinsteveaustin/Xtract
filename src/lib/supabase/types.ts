@@ -31,6 +31,7 @@ export interface Database {
           owner_id?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       profiles: {
         Row: {
@@ -54,6 +55,7 @@ export interface Database {
           workspace_id?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       ctx_configurations: {
         Row: {
@@ -86,6 +88,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       document_sets: {
         Row: {
@@ -109,6 +112,7 @@ export interface Database {
           description?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       documents: {
         Row: {
@@ -153,6 +157,7 @@ export interface Database {
           status?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       workflows: {
         Row: {
@@ -185,6 +190,7 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
+        Relationships: [];
       };
       workflow_runs: {
         Row: {
@@ -229,6 +235,7 @@ export interface Database {
           tokens_used?: number;
           created_at?: string;
         };
+        Relationships: [];
       };
       extracted_objects: {
         Row: {
@@ -294,6 +301,7 @@ export interface Database {
           reviewed_at?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
       extraction_decisions: {
         Row: {
@@ -323,6 +331,7 @@ export interface Database {
           decided_by?: string;
           decided_at?: string;
         };
+        Relationships: [];
       };
       object_relationships: {
         Row: {
@@ -361,10 +370,15 @@ export interface Database {
           description?: string | null;
           created_at?: string;
         };
+        Relationships: [];
       };
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
     Enums: {
       relationship_type:
         | "supersedes"
@@ -379,6 +393,8 @@ export interface Database {
       relationship_direction: "unidirectional" | "bidirectional";
       relationship_source: "extraction" | "analysis_pass" | "human_review";
     };
-    CompositeTypes: Record<string, never>;
+    CompositeTypes: {
+      [_ in never]: never;
+    };
   };
 }

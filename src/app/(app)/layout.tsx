@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { AppHeader } from "@/components/layout/app-header";
 
 export default async function AppLayout({
   children,
@@ -15,5 +16,10 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  return <>{children}</>;
+  return (
+    <div className="min-h-screen flex flex-col">
+      <AppHeader email={user.email ?? ""} />
+      <main className="flex-1">{children}</main>
+    </div>
+  );
 }
