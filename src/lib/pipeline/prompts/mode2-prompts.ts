@@ -186,16 +186,46 @@ Extract all contract terms from this section. Be thorough — do not skip any su
 
 /**
  * Build the prompt for Pass 4: Relationship resolution
+ * Expanded for E-02: 9 relationship types with direction and confidence guidance.
  */
 export function buildRelationshipPrompt(extractedObjects: string): string {
   return `Analyse the following extracted contract terms and identify relationships between them.
 
+## Relationship Types
+
+Use the following vocabulary to classify each relationship:
+
+### Dependency & Hierarchy
+- **depends_on** — Term A requires Term B to function (e.g., SLA penalty depends on SLA definition). Direction: unidirectional.
+- **implements** — Term A is the operational realisation of Term B (e.g., a payment schedule implements a fee structure clause). Direction: unidirectional.
+- **categorised_under** — Term A falls under the broader category of Term B (e.g., a specific data handling clause categorised under data protection). Direction: unidirectional.
+
+### Conflict & Overlap
+- **conflicts_with** — Terms may contradict each other (e.g., termination for convenience vs. minimum commitment). Direction: bidirectional.
+- **duplicates** — Terms cover substantially the same obligation or provision. Direction: bidirectional.
+
+### Versioning & Succession
+- **supersedes** — Term A replaces or overrides Term B (e.g., an amendment clause supersedes the original). Direction: unidirectional.
+- **superseded_by** — Inverse of supersedes: Term A is replaced by Term B. Direction: unidirectional.
+
+### Reference & Association
+- **references** — Term A explicitly cites Term B (e.g., a clause referencing a schedule or appendix). Direction: unidirectional.
+- **related_to** — Terms are thematically connected but no stronger relationship applies. Direction: bidirectional.
+
+## Confidence Scoring
+
+Assign a confidence score (0-100) for each relationship:
+- **90-100**: Explicit textual reference (e.g., "as defined in Clause 5.2", "subject to Section 3")
+- **60-89**: Strongly implied by context, terminology, or structural proximity
+- **Below 60**: Inferred from domain knowledge or general contractual patterns
+
 ## Instructions
 
-1. Identify dependencies: terms that reference or depend on other terms (e.g., SLA penalty depends on SLA definition).
-2. Identify conflicts: terms that may contradict each other (e.g., termination for convenience vs. minimum commitment period).
-3. Identify cross-references: terms that reference schedules, appendices, or other clauses by number.
-4. For each relationship, provide a brief description of how the objects are related.
+1. Examine ALL extracted objects for inter-dependencies, conflicts, and cross-references.
+2. Classify each relationship using the 9-type vocabulary above.
+3. Set direction: use "unidirectional" when the relationship flows from source to target only; use "bidirectional" when it applies equally in both directions.
+4. Assign an honest confidence score based on the textual evidence.
+5. Identify cross-references to schedules, appendices, or definitions.
 
 ## Extracted Contract Terms
 

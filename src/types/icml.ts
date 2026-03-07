@@ -152,6 +152,38 @@ export interface ICMLExtractionOutput {
   entities: ICMLEntity[];
   artefacts: ICMLArtefact[];
   objects: ExtractedDomainObject[];
+  relationships: ICMLRelationship[];
+}
+
+// ─── Relationship Edges (iCML v4.0 Section 5.1) ────────────────────
+
+/** Structured relationship type vocabulary for iCML graph edges */
+export type ICMLRelationshipType =
+  | "supersedes"
+  | "superseded_by"
+  | "related_to"
+  | "duplicates"
+  | "categorised_under"
+  | "implements"
+  | "depends_on"
+  | "conflicts_with"
+  | "references";
+
+/** Edge directionality */
+export type RelationshipDirection = "unidirectional" | "bidirectional";
+
+/** Provenance of the relationship assertion */
+export type RelationshipSource = "extraction" | "analysis_pass" | "human_review";
+
+/** A typed, directional relationship edge between two iCML objects */
+export interface ICMLRelationship {
+  fromObjectId: string;
+  toObjectId: string;
+  relationshipType: ICMLRelationshipType;
+  direction: RelationshipDirection;
+  confidence: number; // 0-100
+  source: RelationshipSource;
+  description?: string;
 }
 
 // ─── Serialisation Tiers (iCML v4.0 Section 6.1) ───────────────────

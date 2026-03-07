@@ -1,7 +1,7 @@
 // iCML JSON export serializer
 // Assembles extraction results into ICMLExtractionOutput format
 
-import type { DomainObject, Source, CTXFileRecord } from "@/lib/db";
+import type { DomainObject, Source, CTXFileRecord, ObjectRelationshipRecord } from "@/lib/db";
 import { CTX_SPEC_VERSION, ICML_VERSION, XTRACT_TOOL_ID } from "@/lib/utils/constants";
 
 export interface ICMLExportOutput {
@@ -48,6 +48,15 @@ export interface ICMLExportOutput {
       rationale: string;
     };
   }>;
+  relationships: Array<{
+    fromObjectId: string;
+    toObjectId: string;
+    relationshipType: string;
+    direction: string;
+    confidence: number;
+    source: string;
+    description?: string;
+  }>;
   qualitySummary: {
     totalObjects: number;
     averageRubricScore: number;
@@ -60,7 +69,8 @@ export function serializeToICML(
   extractionId: string,
   sourceDocs: Source[],
   domainObjectRecords: DomainObject[],
-  ctxFile: CTXFileRecord
+  ctxFile: CTXFileRecord,
+  relationshipRecords: ObjectRelationshipRecord[] = []
 ): ICMLExportOutput {
   // Separate real objects from entity metadata
   const realObjects = domainObjectRecords.filter(
@@ -163,6 +173,15 @@ export function serializeToICML(
     entities,
     artefacts,
     objects,
+    relationships: relationshipRecords.map((r) => ({
+      fromObjectId: r.from_object_icml_id,
+      toObjectId: r.to_object_icml_id,
+      relationshipType: r.relationship_type,
+      direction: r.direction,
+      confidence: r.confidence,
+      source: r.source,
+      description: r.description ?? undefined,
+    })),
     qualitySummary: {
       totalObjects: realObjects.length,
       averageRubricScore: avgScore,

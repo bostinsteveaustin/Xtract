@@ -263,6 +263,12 @@ export type ObjectRelationshipType =
   | "depends_on"
   | "conflicts_with"
   | "references"
+  | "supersedes"
+  | "superseded_by"
+  | "related_to"
+  | "duplicates"
+  | "categorised_under"
+  | "implements"
   | "one-to-one"
   | "one-to-many"
   | "many-to-many";

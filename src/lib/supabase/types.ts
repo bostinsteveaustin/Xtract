@@ -324,10 +324,61 @@ export interface Database {
           decided_at?: string;
         };
       };
+      object_relationships: {
+        Row: {
+          id: string;
+          workflow_run_id: string;
+          from_object_icml_id: string;
+          to_object_icml_id: string;
+          relationship_type: string;
+          direction: string;
+          confidence: number;
+          source: string;
+          description: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          workflow_run_id: string;
+          from_object_icml_id: string;
+          to_object_icml_id: string;
+          relationship_type: string;
+          direction?: string;
+          confidence?: number;
+          source?: string;
+          description?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          workflow_run_id?: string;
+          from_object_icml_id?: string;
+          to_object_icml_id?: string;
+          relationship_type?: string;
+          direction?: string;
+          confidence?: number;
+          source?: string;
+          description?: string | null;
+          created_at?: string;
+        };
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
-    Enums: Record<string, never>;
+    Enums: {
+      relationship_type:
+        | "supersedes"
+        | "superseded_by"
+        | "related_to"
+        | "duplicates"
+        | "categorised_under"
+        | "implements"
+        | "depends_on"
+        | "conflicts_with"
+        | "references";
+      relationship_direction: "unidirectional" | "bidirectional";
+      relationship_source: "extraction" | "analysis_pass" | "human_review";
+    };
     CompositeTypes: Record<string, never>;
   };
 }

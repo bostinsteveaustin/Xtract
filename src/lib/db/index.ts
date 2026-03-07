@@ -13,6 +13,8 @@ export type WorkflowRun = Database["public"]["Tables"]["workflow_runs"]["Row"];
 export type ExtractedObject = Database["public"]["Tables"]["extracted_objects"]["Row"];
 export type ExtractionDecision = Database["public"]["Tables"]["extraction_decisions"]["Row"];
 
+export type ObjectRelationshipRecord = Database["public"]["Tables"]["object_relationships"]["Row"];
+
 // Aliases for backward compatibility with old code
 export type CTXFileRecord = CTXConfiguration;
 export type DomainObject = ExtractedObject;

@@ -173,6 +173,7 @@ export function buildObjectExtractionSchema(
 
 /**
  * Build a Zod schema for the relationship resolution pass (Pass 4).
+ * Expanded for E-02: 9 relationship types, direction, and confidence scoring.
  */
 export function buildRelationshipSchema(): z.ZodType {
   return z.object({
@@ -186,8 +187,31 @@ export function buildRelationshipSchema(): z.ZodType {
             .string()
             .describe("objectID of the target object"),
           relationshipType: z
-            .enum(["depends_on", "conflicts_with", "references"])
+            .enum([
+              "depends_on",
+              "conflicts_with",
+              "references",
+              "supersedes",
+              "superseded_by",
+              "related_to",
+              "duplicates",
+              "categorised_under",
+              "implements",
+            ])
             .describe("Type of relationship between the objects"),
+          direction: z
+            .enum(["unidirectional", "bidirectional"])
+            .describe(
+              "Whether the relationship applies in one direction (A→B) or both (A↔B)"
+            ),
+          confidence: z
+            .number()
+            .int()
+            .min(0)
+            .max(100)
+            .describe(
+              "Confidence in this relationship: 90-100 = explicit reference, 60-89 = strongly implied, below 60 = inferred"
+            ),
           description: z
             .string()
             .describe("Brief explanation of how these objects are related"),
