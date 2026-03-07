@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, Menu } from "lucide-react";
+import { useSidebar } from "@/hooks/use-sidebar";
 
 interface AppHeaderProps {
   email: string;
@@ -11,6 +12,7 @@ interface AppHeaderProps {
 
 export function AppHeader({ email }: AppHeaderProps) {
   const router = useRouter();
+  const { toggle } = useSidebar();
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -19,19 +21,24 @@ export function AppHeader({ email }: AppHeaderProps) {
   };
 
   return (
-    <header className="h-16 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex h-full items-center justify-between px-6">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-sm">X</span>
-            </div>
-            <span className="font-semibold text-lg">Xtract</span>
-          </div>
+    <header className="h-16 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex-shrink-0">
+      <div className="flex h-full items-center justify-between px-4">
+        <div className="flex items-center gap-2">
+          {/* Mobile menu toggle (visible on small screens) */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="lg:hidden"
+            onClick={toggle}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
         </div>
 
         <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">{email}</span>
+          <span className="text-sm text-muted-foreground hidden sm:inline">
+            {email}
+          </span>
           <Button variant="ghost" size="sm" onClick={handleSignOut}>
             <LogOut className="h-4 w-4 mr-2" />
             Sign out

@@ -39,6 +39,7 @@ export interface Database {
           email: string;
           display_name: string | null;
           workspace_id: string | null;
+          avatar_url: string | null;
           created_at: string;
         };
         Insert: {
@@ -46,6 +47,7 @@ export interface Database {
           email: string;
           display_name?: string | null;
           workspace_id?: string | null;
+          avatar_url?: string | null;
           created_at?: string;
         };
         Update: {
@@ -53,6 +55,7 @@ export interface Database {
           email?: string;
           display_name?: string | null;
           workspace_id?: string | null;
+          avatar_url?: string | null;
           created_at?: string;
         };
         Relationships: [];

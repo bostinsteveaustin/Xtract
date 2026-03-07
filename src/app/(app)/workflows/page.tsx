@@ -1,8 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { PAY_UK_TEMPLATE } from "@/lib/workflow/templates";
-import { WorkflowPageClient } from "@/components/workflow/workflow-page-client";
+import { Plus, GitBranch } from "lucide-react";
 
 export default async function WorkflowsPage() {
   const supabase = await createClient();
@@ -27,49 +26,32 @@ export default async function WorkflowsPage() {
     redirect("/login");
   }
 
-  const workspaceId = profile.workspace_id;
-
-  // Find or create the default workflow for this workspace
-  const { data: existingWorkflows } = await admin
+  // Fetch all workflows, ordered by most recently updated
+  const { data: workflows } = await admin
     .from("workflows")
-    .select("*")
-    .eq("workspace_id", workspaceId)
-    .order("created_at", { ascending: false })
+    .select("id")
+    .eq("workspace_id", profile.workspace_id)
+    .order("updated_at", { ascending: false })
     .limit(1);
 
-  let workflowId: string;
-
-  if (existingWorkflows && existingWorkflows.length > 0) {
-    workflowId = existingWorkflows[0].id;
-  } else {
-    // Create default workflow
-    const { data: newWorkflow, error: createError } = await admin
-      .from("workflows")
-      .insert({
-        workspace_id: workspaceId,
-        name: "Contract Analysis Pipeline",
-        template_id: PAY_UK_TEMPLATE.templateId,
-        node_graph: JSON.parse(JSON.stringify(PAY_UK_TEMPLATE)),
-      })
-      .select()
-      .single();
-
-    if (createError || !newWorkflow) {
-      console.error("Failed to create workflow:", createError);
-      return (
-        <div className="flex min-h-screen items-center justify-center">
-          <p className="text-destructive">Failed to initialize workflow. Please try again.</p>
-        </div>
-      );
-    }
-
-    workflowId = newWorkflow.id;
+  // If any workflows exist, redirect to the latest one
+  if (workflows && workflows.length > 0) {
+    redirect(`/workflows/${workflows[0].id}`);
   }
 
+  // Otherwise render empty state
   return (
-    <WorkflowPageClient
-      workflowId={workflowId}
-      definition={PAY_UK_TEMPLATE}
-    />
+    <div className="flex-1 flex items-center justify-center p-8">
+      <div className="text-center max-w-md space-y-4">
+        <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+          <GitBranch className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <h2 className="text-xl font-semibold">No pipelines yet</h2>
+        <p className="text-sm text-muted-foreground">
+          Create your first pipeline to get started with document extraction.
+          Use the <Plus className="inline h-3.5 w-3.5" /> button in the sidebar.
+        </p>
+      </div>
+    </div>
   );
 }
