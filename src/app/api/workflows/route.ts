@@ -4,7 +4,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getTemplateById, getDefaultTemplate } from "@/lib/workflow/templates";
+import { getTemplate, getDefaultTemplate } from "@/lib/pipeline/templates";
 
 export async function GET() {
   try {
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     const { name, templateId } = body as { name?: string; templateId?: string };
 
     const template = templateId
-      ? getTemplateById(templateId) ?? getDefaultTemplate()
+      ? getTemplate(templateId) ?? getDefaultTemplate()
       : getDefaultTemplate();
 
     const admin = createAdminClient();

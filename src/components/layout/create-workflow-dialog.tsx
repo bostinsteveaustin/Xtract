@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 export function CreateWorkflowDialog() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("Untitled Pipeline");
-  const [templateId, setTemplateId] = useState("pay-uk-v1");
+  const [templateId, setTemplateId] = useState("ontology-v1");
   const [creating, setCreating] = useState(false);
   const { createWorkflow } = useWorkflows();
   const { isCollapsed } = useSidebar();
@@ -75,7 +75,7 @@ export function CreateWorkflowDialog() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="pay-uk-v1">Pay.UK Contract Analysis</SelectItem>
+                <SelectItem value="ontology-v1">Ontology Pipeline</SelectItem>
                 <SelectItem value="blank">Blank Pipeline</SelectItem>
               </SelectContent>
             </Select>
