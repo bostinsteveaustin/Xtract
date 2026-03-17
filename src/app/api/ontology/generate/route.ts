@@ -50,8 +50,9 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("POST /api/ontology/generate error:", error);
+    const msg = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { error: "Ontology generation failed" },
+      { error: `Generation failed: ${msg.slice(0, 200)}` },
       { status: 500 }
     );
   }
