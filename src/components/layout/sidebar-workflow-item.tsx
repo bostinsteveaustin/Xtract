@@ -77,12 +77,12 @@ export function SidebarWorkflowItem({ id, name, status }: SidebarWorkflowItemPro
             <MoreHorizontal className="h-3.5 w-3.5" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-36">
-            <DropdownMenuItem onClick={() => setRenameOpen(true)}>
+            <DropdownMenuItem onSelect={() => setTimeout(() => setRenameOpen(true), 0)}>
               <Pencil className="h-3.5 w-3.5 mr-2" />
               Rename
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => setDeleteOpen(true)}
+              onSelect={() => setTimeout(() => setDeleteOpen(true), 0)}
               className="text-destructive focus:text-destructive"
             >
               <Trash2 className="h-3.5 w-3.5 mr-2" />
