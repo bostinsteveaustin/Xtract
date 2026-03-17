@@ -5,13 +5,12 @@ import { runBenchmarks } from "@/lib/ontology/benchmark-validator";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { turtle, config, metrics, flags } = body as {
+    const { turtle, config, flags } = body as {
       turtle: string;
       config?: {
         namespace?: string;
         ontologyTitle?: string;
       };
-      metrics?: Record<string, number>;
       flags?: unknown[];
     };
 
@@ -28,14 +27,31 @@ export async function POST(request: Request) {
     // Run benchmark validation
     const benchmarkResults = runBenchmarks(turtle);
 
+    // Count entities from turtle
+    const classCount = (turtle.match(/a\s+owl:Class/g) ?? []).length;
+    const objPropCount = (turtle.match(/a\s+owl:ObjectProperty/g) ?? []).length;
+    const dataPropCount = (turtle.match(/a\s+owl:DatatypeProperty/g) ?? []).length;
+    const tripleCount = turtle.split(".\n").length;
+    const queriesPassing = benchmarkResults.filter((b) => b.passed).length;
+
+    const metrics = {
+      classes: classCount,
+      objectProperties: objPropCount,
+      dataProperties: dataPropCount,
+      triples: tripleCount,
+      flagsRaised: flags?.length ?? 0,
+      queriesPassing,
+      totalQueries: benchmarkResults.length,
+    };
+
     // Build run summary
     const runSummary = {
       generatedAt: new Date().toISOString(),
       config: config ?? {},
-      metrics: metrics ?? {},
+      metrics,
       benchmarks: {
         total: benchmarkResults.length,
-        passing: benchmarkResults.filter((b) => b.passed).length,
+        passing: queriesPassing,
         queries: benchmarkResults,
       },
       flagCount: flags?.length ?? 0,
@@ -60,8 +76,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       files,
-      benchmarks: benchmarkResults,
-      summary: runSummary,
+      metrics,
+      benchmarkResults,
     });
   } catch (error) {
     console.error("POST /api/ontology/export error:", error);

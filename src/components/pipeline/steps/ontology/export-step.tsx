@@ -1,13 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { MetricCards } from "../../interactions/metric-cards";
 import { ValidationTable } from "../../interactions/validation-table";
 import { DownloadGrid } from "../../interactions/download-grid";
 import { Button } from "@/components/ui/button";
-import { RotateCcw, Loader2 } from "lucide-react";
+import { RotateCcw, Loader2, AlertTriangle } from "lucide-react";
 import type { StepBodyProps } from "../../step-registry";
 import type { MetricItem, BenchmarkQuery, DownloadFile } from "@/types/pipeline";
+
+interface FileData {
+  name: string;
+  size: string;
+  format: string;
+  content: string;
+}
 
 export default function ExportStep({
   stepState,
@@ -15,10 +22,8 @@ export default function ExportStep({
   onStart,
   onComplete,
   onError,
+  onUpdateData,
 }: StepBodyProps) {
-  const [metrics, setMetrics] = useState<MetricItem[]>([]);
-  const [queries, setQueries] = useState<BenchmarkQuery[]>([]);
-  const [files, setFiles] = useState<DownloadFile[]>([]);
   const [running, setRunning] = useState(false);
   const hasRun = useRef(false);
 
@@ -39,7 +44,7 @@ export default function ExportStep({
     onStart();
 
     const turtle = allStepStates["ontology-generation"]?.data?.turtle as string | undefined;
-    const genMetrics = allStepStates["ontology-generation"]?.data?.metrics as Record<string, number> | undefined;
+    const resolvedFlags = allStepStates["ontology-generation"]?.data?.resolvedFlags as unknown[] | undefined;
     const configData = allStepStates.configuration?.data;
     const config = configData?.config as Record<string, string> | undefined;
 
@@ -59,6 +64,7 @@ export default function ExportStep({
             namespace: config?.namespace ?? "",
             ontologyTitle: config?.ontologyTitle ?? "",
           },
+          flags: resolvedFlags ?? [],
         }),
       });
 
@@ -71,49 +77,50 @@ export default function ExportStep({
 
       const data = await res.json();
 
-      // Set metrics
-      setMetrics([
-        { label: "Classes", value: data.metrics?.classes ?? genMetrics?.classes ?? 0 },
-        { label: "Triples", value: data.metrics?.triples ?? 0 },
-        { label: "Flags Raised", value: data.metrics?.flagsRaised ?? 0 },
-        {
-          label: "Queries Passing",
-          value: `${data.metrics?.queriesPassing ?? 0}/${data.metrics?.totalQueries ?? 0}`,
-          highlight: true,
-        },
-      ]);
-
-      // Set benchmark queries
-      if (data.benchmarkResults) {
-        setQueries(data.benchmarkResults);
-      }
-
-      // Set download files
-      if (data.files) {
-        setFiles(
-          (data.files as { name: string; size: string; format: string; content: string }[]).map(
-            (f) => ({
-              name: f.name,
-              size: f.size,
-              format: f.format,
-              blob: new Blob([f.content], {
-                type: f.format === "json" ? "application/json" : "text/plain",
-              }),
-            })
-          )
-        );
-      }
-
-      setRunning(false);
-      onComplete({
+      // Persist to step data so it survives collapse/expand
+      onUpdateData({
         metrics: data.metrics,
         benchmarkResults: data.benchmarkResults,
+        files: data.files, // raw file data with content strings
       });
+
+      setRunning(false);
     } catch (e) {
       onError({ code: "NETWORK", message: String(e) });
       setRunning(false);
     }
   };
+
+  // Derive display data from persisted stepState.data
+  const metrics: MetricItem[] = useMemo(() => {
+    const m = stepState.data.metrics as Record<string, number> | undefined;
+    if (!m) return [];
+    return [
+      { label: "Classes", value: m.classes ?? 0 },
+      { label: "Triples", value: m.triples ?? 0 },
+      { label: "Flags Raised", value: m.flagsRaised ?? 0 },
+      {
+        label: "Queries Passing",
+        value: `${m.queriesPassing ?? 0}/${m.totalQueries ?? 0}`,
+        highlight: true,
+      },
+    ];
+  }, [stepState.data.metrics]);
+
+  const queries = (stepState.data.benchmarkResults as BenchmarkQuery[] | undefined) ?? [];
+
+  const downloadFiles: DownloadFile[] = useMemo(() => {
+    const raw = stepState.data.files as FileData[] | undefined;
+    if (!raw) return [];
+    return raw.map((f) => ({
+      name: f.name,
+      size: f.size,
+      format: f.format,
+      blob: new Blob([f.content], {
+        type: f.format === "json" ? "application/json" : "text/plain",
+      }),
+    }));
+  }, [stepState.data.files]);
 
   const handleDownload = (file: DownloadFile) => {
     if (!file.blob) return;
@@ -125,6 +132,15 @@ export default function ExportStep({
     URL.revokeObjectURL(url);
   };
 
+  const handleComplete = () => {
+    onComplete({
+      metrics: stepState.data.metrics,
+      benchmarkResults: stepState.data.benchmarkResults,
+    });
+  };
+
+  const isReady = downloadFiles.length > 0;
+
   return (
     <div className="space-y-6">
       {running && (
@@ -134,17 +150,46 @@ export default function ExportStep({
         </div>
       )}
 
+      {stepState.error && (
+        <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 space-y-2">
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+            <span className="font-medium">{stepState.error.message}</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              hasRun.current = false;
+              runExport();
+            }}
+          >
+            <RotateCcw className="h-3.5 w-3.5 mr-2" />
+            Retry export
+          </Button>
+        </div>
+      )}
+
       {metrics.length > 0 && <MetricCards metrics={metrics} />}
 
       {queries.length > 0 && <ValidationTable queries={queries} />}
 
-      {files.length > 0 && (
+      {downloadFiles.length > 0 && (
         <div>
           <p className="text-[11px] uppercase tracking-[0.06em] text-muted-foreground font-medium mb-2">
             Downloads
           </p>
-          <DownloadGrid files={files} onDownload={handleDownload} />
+          <DownloadGrid files={downloadFiles} onDownload={handleDownload} />
         </div>
+      )}
+
+      {isReady && stepState.status !== "complete" && (
+        <Button
+          onClick={handleComplete}
+          className="bg-[var(--pipeline-navy)] hover:bg-[var(--pipeline-navy)]/90"
+        >
+          Finish pipeline run
+        </Button>
       )}
 
       {stepState.status === "complete" && (
