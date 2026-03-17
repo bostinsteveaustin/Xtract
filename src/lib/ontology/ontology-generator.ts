@@ -64,7 +64,7 @@ CTX context:
 ${input.ctxContent.slice(0, 6000)}
 
 Map each candidate class to ${input.config.upperOntology} parent classes with full SKOS annotations enriched by the CTX tacit knowledge.`,
-    maxOutputTokens: 6000,
+    maxOutputTokens: 4000,
   });
 
   const mappingIn = mappingResult.usage?.inputTokens ?? 0;
@@ -107,7 +107,7 @@ Namespace: ${namespace}
 Ontology title: ${input.config.ontologyTitle || "Domain Ontology"}
 
 Generate a complete, valid Turtle file. Then list ambiguity flags for anything requiring human review.`,
-    maxOutputTokens: 12000,
+    maxOutputTokens: 8000,
   });
 
   const turtleIn = turtleResult.usage?.inputTokens ?? 0;

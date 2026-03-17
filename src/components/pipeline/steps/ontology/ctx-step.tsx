@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { PipelineLog } from "../../interactions/pipeline-log";
 import { ContextChat } from "../../interactions/context-chat";
 import { Button } from "@/components/ui/button";
-import { Download, Loader2 } from "lucide-react";
+import { AlertTriangle, Download, Loader2, RotateCcw } from "lucide-react";
 import type { StepBodyProps } from "../../step-registry";
 import type { ChatMessage, LogEntry } from "@/types/pipeline";
 import { nanoid } from "nanoid";
@@ -173,6 +173,26 @@ export default function CTXStep({
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           Producing CTX file from transcript...
+        </div>
+      )}
+
+      {stepState.error && (
+        <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 space-y-2">
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+            <span className="font-medium">{stepState.error.message}</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              hasRun.current = false;
+              runCTXProduction();
+            }}
+          >
+            <RotateCcw className="h-3.5 w-3.5 mr-2" />
+            Retry
+          </Button>
         </div>
       )}
 

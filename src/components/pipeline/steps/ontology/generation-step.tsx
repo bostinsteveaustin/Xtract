@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { PipelineLog } from "../../interactions/pipeline-log";
 import { FlagReview } from "../../interactions/flag-review";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, RotateCcw } from "lucide-react";
 import type { StepBodyProps } from "../../step-registry";
 import type { LogEntry, PipelineFlag } from "@/types/pipeline";
 
@@ -118,7 +118,27 @@ export default function GenerationStep({
       {running && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Generating ontology...
+          Generating ontology (this may take up to 60s)...
+        </div>
+      )}
+
+      {stepState.error && (
+        <div className="rounded-md border border-destructive/50 bg-destructive/5 p-3 space-y-2">
+          <div className="flex items-center gap-2 text-sm text-destructive">
+            <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+            <span className="font-medium">{stepState.error.message}</span>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              hasRun.current = false;
+              runGeneration();
+            }}
+          >
+            <RotateCcw className="h-3.5 w-3.5 mr-2" />
+            Retry generation
+          </Button>
         </div>
       )}
 
