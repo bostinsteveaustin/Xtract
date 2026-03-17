@@ -21,6 +21,7 @@ export default function GenerationStep({
   onUpdateTokenUsage,
 }: StepBodyProps) {
   const [running, setRunning] = useState(false);
+  const [phase, setPhase] = useState<"idle" | "mapping" | "turtle">("idle");
   const hasRun = useRef(false);
 
   useEffect(() => {
@@ -37,6 +38,7 @@ export default function GenerationStep({
 
   const runGeneration = async () => {
     setRunning(true);
+    setPhase("mapping");
     onStart();
 
     const configData = allStepStates.configuration?.data;
@@ -47,56 +49,101 @@ export default function GenerationStep({
     if (!ctxContent || !candidates) {
       onError({ code: "NO_INPUT", message: "Missing CTX content or candidates" });
       setRunning(false);
+      setPhase("idle");
       return;
     }
 
+    const genConfig = {
+      upperOntology: config?.upperOntology ?? "gist-core",
+      namespace: config?.namespace ?? "",
+      ontologyTitle: config?.ontologyTitle ?? "",
+    };
+
     try {
-      const res = await fetch("/api/ontology/generate", {
+      // ── Call 1: Upper ontology mapping (fits in 60s) ──
+      const res1 = await fetch("/api/ontology/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          step: 1,
           ctxContent,
           candidates,
-          config: {
-            upperOntology: config?.upperOntology ?? "gist-core",
-            namespace: config?.namespace ?? "",
-            ontologyTitle: config?.ontologyTitle ?? "",
-          },
+          config: genConfig,
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Generation failed" }));
-        onError({ code: "GEN_ERROR", message: err.error ?? "Generation failed" });
+      if (!res1.ok) {
+        const err = await res1.json().catch(() => ({ error: "Mapping failed" }));
+        onError({ code: "MAP_ERROR", message: err.error ?? "Mapping failed" });
         setRunning(false);
+        setPhase("idle");
         return;
       }
 
-      const data = await res.json();
+      const mapData = await res1.json();
 
-      // Stream log entries
-      const entries = data.logEntries as LogEntry[] ?? [];
-      for (const entry of entries) {
+      // Stream mapping log entries
+      const mapEntries = mapData.logEntries as LogEntry[] ?? [];
+      for (const entry of mapEntries) {
+        onLogEntry(entry);
+        await new Promise((r) => setTimeout(r, 50));
+      }
+
+      // Report mapping token usage
+      if (mapData.tokenUsage) onUpdateTokenUsage(mapData.tokenUsage);
+
+      // ── Call 2: Turtle generation (fits in 60s) ──
+      setPhase("turtle");
+
+      const res2 = await fetch("/api/ontology/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          step: 2,
+          ctxContent,
+          candidates,
+          config: genConfig,
+          mappingText: mapData.mappingText,
+        }),
+      });
+
+      if (!res2.ok) {
+        const err = await res2.json().catch(() => ({ error: "Turtle generation failed" }));
+        onError({ code: "GEN_ERROR", message: err.error ?? "Turtle generation failed" });
+        setRunning(false);
+        setPhase("idle");
+        return;
+      }
+
+      const turtleData = await res2.json();
+
+      // Stream turtle log entries
+      const turtleEntries = turtleData.logEntries as LogEntry[] ?? [];
+      for (const entry of turtleEntries) {
         onLogEntry(entry);
         await new Promise((r) => setTimeout(r, 50));
       }
 
       // Set flags
-      if (data.flags) {
-        onUpdateFlags(data.flags as PipelineFlag[]);
+      if (turtleData.flags) {
+        onUpdateFlags(turtleData.flags as PipelineFlag[]);
       }
 
       // Store turtle content
       onUpdateData({
-        turtle: data.turtle,
-        metrics: data.metrics,
+        turtle: turtleData.turtle,
+        metrics: turtleData.metrics,
       });
 
-      if (data.tokenUsage) onUpdateTokenUsage(data.tokenUsage);
+      // Report turtle token usage
+      if (turtleData.tokenUsage) onUpdateTokenUsage(turtleData.tokenUsage);
+
       setRunning(false);
+      setPhase("idle");
     } catch (e) {
       onError({ code: "NETWORK", message: String(e) });
       setRunning(false);
+      setPhase("idle");
     }
   };
 
@@ -118,7 +165,9 @@ export default function GenerationStep({
       {running && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Generating ontology (this may take up to 60s)...
+          {phase === "mapping"
+            ? "Step 1/2: Mapping candidates to upper ontology..."
+            : "Step 2/2: Generating Turtle ontology..."}
         </div>
       )}
 

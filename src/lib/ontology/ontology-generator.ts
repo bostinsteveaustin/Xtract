@@ -12,7 +12,13 @@ interface GenerateInput {
   };
 }
 
-interface GenerateResult {
+export interface MappingResult {
+  mappingText: string;
+  logEntries: LogEntry[];
+  tokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number };
+}
+
+export interface TurtleResult {
   turtle: string;
   flags: PipelineFlag[];
   metrics: {
@@ -29,15 +35,17 @@ function ts(): string {
   return new Date().toISOString().slice(11, 19);
 }
 
-export async function generateOntology(input: GenerateInput): Promise<GenerateResult> {
+/**
+ * Step 1 of 2: Map candidates to upper ontology classes with SKOS annotations.
+ * Designed to complete within a single 60s serverless function invocation.
+ */
+export async function generateMapping(input: GenerateInput): Promise<MappingResult> {
   const log: LogEntry[] = [];
   const namespace = input.config.namespace || "https://ontology.example.org/domain#";
 
   log.push({ timestamp: ts(), level: "info", message: "Starting ontology generation...", icon: "check" });
   log.push({ timestamp: ts(), level: "info", message: `Upper ontology: ${input.config.upperOntology}`, icon: "check" });
   log.push({ timestamp: ts(), level: "info", message: `Namespace: ${namespace}`, icon: "check" });
-
-  // Step 1: Upper ontology mapping
   log.push({ timestamp: ts(), level: "info", message: "Step 1/2: Mapping candidates to upper ontology...", icon: "check" });
 
   const mappingResult = await generateText({
@@ -67,12 +75,26 @@ Map each candidate class to ${input.config.upperOntology} parent classes with fu
     maxOutputTokens: 4000,
   });
 
-  const mappingIn = mappingResult.usage?.inputTokens ?? 0;
-  const mappingOut = mappingResult.usage?.outputTokens ?? 0;
+  const inTok = mappingResult.usage?.inputTokens ?? 0;
+  const outTok = mappingResult.usage?.outputTokens ?? 0;
 
-  log.push({ timestamp: ts(), level: "info", message: "Upper ontology mapping complete", icon: "check" });
+  log.push({ timestamp: ts(), level: "info", message: `Mapping complete — ${inTok.toLocaleString()} in / ${outTok.toLocaleString()} out`, icon: "check" });
 
-  // Step 2: Turtle generation
+  return {
+    mappingText: mappingResult.text,
+    logEntries: log,
+    tokenUsage: { promptTokens: inTok, completionTokens: outTok, totalTokens: inTok + outTok },
+  };
+}
+
+/**
+ * Step 2 of 2: Generate Turtle (.ttl) from mapping result + candidates + CTX.
+ * Designed to complete within a single 60s serverless function invocation.
+ */
+export async function generateTurtle(input: GenerateInput & { mappingText: string }): Promise<TurtleResult> {
+  const log: LogEntry[] = [];
+  const namespace = input.config.namespace || "https://ontology.example.org/domain#";
+
   log.push({ timestamp: ts(), level: "info", message: "Step 2/2: Generating Turtle (.ttl)...", icon: "check" });
 
   const turtleResult = await generateText({
@@ -95,7 +117,7 @@ Output format:
 ---FLAGS---
 [JSON array of flags]`,
     prompt: `Upper ontology mappings:
-${mappingResult.text.slice(0, 6000)}
+${input.mappingText.slice(0, 6000)}
 
 Full candidates:
 ${JSON.stringify(input.candidates, null, 2).slice(0, 6000)}
@@ -110,13 +132,8 @@ Generate a complete, valid Turtle file. Then list ambiguity flags for anything r
     maxOutputTokens: 8000,
   });
 
-  const turtleIn = turtleResult.usage?.inputTokens ?? 0;
-  const turtleOut = turtleResult.usage?.outputTokens ?? 0;
-  const tokenUsage = {
-    promptTokens: mappingIn + turtleIn,
-    completionTokens: mappingOut + turtleOut,
-    totalTokens: mappingIn + mappingOut + turtleIn + turtleOut,
-  };
+  const inTok = turtleResult.usage?.inputTokens ?? 0;
+  const outTok = turtleResult.usage?.outputTokens ?? 0;
 
   // Parse turtle and flags
   const fullText = turtleResult.text;
@@ -157,7 +174,8 @@ Generate a complete, valid Turtle file. Then list ambiguity flags for anything r
     }
   }
 
-  log.push({ timestamp: ts(), level: "info", message: `Tokens: ${tokenUsage.promptTokens.toLocaleString()} in / ${tokenUsage.completionTokens.toLocaleString()} out (2 calls)`, icon: "check" });
+  const tokenUsage = { promptTokens: inTok, completionTokens: outTok, totalTokens: inTok + outTok };
+  log.push({ timestamp: ts(), level: "info", message: `Turtle tokens: ${inTok.toLocaleString()} in / ${outTok.toLocaleString()} out`, icon: "check" });
   log.push({ timestamp: ts(), level: "info", message: "Ontology generation complete", icon: "check" });
 
   return {
@@ -171,5 +189,25 @@ Generate a complete, valid Turtle file. Then list ambiguity flags for anything r
     },
     logEntries: log,
     tokenUsage,
+  };
+}
+
+/**
+ * @deprecated Use generateMapping() + generateTurtle() separately for better timeout resilience.
+ * Kept for backward compatibility.
+ */
+export async function generateOntology(input: GenerateInput) {
+  const mapping = await generateMapping(input);
+  const turtle = await generateTurtle({ ...input, mappingText: mapping.mappingText });
+  return {
+    turtle: turtle.turtle,
+    flags: turtle.flags,
+    metrics: turtle.metrics,
+    logEntries: [...mapping.logEntries, ...turtle.logEntries],
+    tokenUsage: {
+      promptTokens: mapping.tokenUsage.promptTokens + turtle.tokenUsage.promptTokens,
+      completionTokens: mapping.tokenUsage.completionTokens + turtle.tokenUsage.completionTokens,
+      totalTokens: mapping.tokenUsage.totalTokens + turtle.tokenUsage.totalTokens,
+    },
   };
 }

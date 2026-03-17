@@ -103,10 +103,10 @@ export function FileDropZone({
           />
         </div>
       ) : (
-        <div className="rounded-lg border-[1.5px] border-solid border-[var(--pipeline-pink)] bg-[var(--pipeline-pink)]/5 px-4 py-3">
+        <div className="rounded-lg border-[1.5px] border-solid border-emerald-500 bg-emerald-50 px-4 py-3">
           {files.map((f, i) => (
             <div key={i} className="flex items-center gap-2">
-              <File className="h-4 w-4 text-[var(--pipeline-pink)]" />
+              <File className="h-4 w-4 text-emerald-600" />
               <span className="text-sm font-medium flex-1 truncate">
                 {f.name}
               </span>
