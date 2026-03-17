@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { SidebarProvider } from "@/hooks/use-sidebar";
+import { WorkflowsProvider } from "@/hooks/use-workflows";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 export default async function AppLayout({
@@ -38,16 +39,18 @@ export default async function AppLayout({
   return (
     <TooltipProvider delayDuration={0}>
       <SidebarProvider>
-        <div className="h-screen flex overflow-hidden">
-          {/* Left sidebar */}
-          <AppSidebar user={sidebarUser} />
+        <WorkflowsProvider>
+          <div className="h-screen flex overflow-hidden">
+            {/* Left sidebar */}
+            <AppSidebar user={sidebarUser} />
 
-          {/* Right: header + main content */}
-          <div className="flex-1 flex flex-col min-w-0">
-            <AppHeader email={user.email ?? ""} />
-            <main className="flex-1 overflow-auto">{children}</main>
+            {/* Right: header + main content */}
+            <div className="flex-1 flex flex-col min-w-0">
+              <AppHeader email={user.email ?? ""} />
+              <main className="flex-1 overflow-auto">{children}</main>
+            </div>
           </div>
-        </div>
+        </WorkflowsProvider>
       </SidebarProvider>
     </TooltipProvider>
   );

@@ -1,9 +1,10 @@
 "use client";
 
-import { lazy, Suspense, useMemo } from "react";
+import { lazy, Suspense, useMemo, useEffect, useRef } from "react";
 import { PipelineBody } from "./pipeline-body";
 import { StepCard } from "./step-card";
 import { StepConnector } from "./step-connector";
+import { RunHistoryPanel } from "./run-history-panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePipelineExecution } from "@/hooks/use-pipeline-execution";
 import { getStepBodyLoader, type StepBodyProps } from "./step-registry";
@@ -38,8 +39,46 @@ export function PipelinePageClient({
     addLogEntry,
     updateFlags,
     resolveFlag,
+    updateTokenUsage,
     setMode,
+    totalTokenUsage,
   } = usePipelineExecution(workflowId, template);
+
+  // Save run to DB when pipeline completes
+  const savedRef = useRef(false);
+  const isComplete = state.metadata.completedAt != null;
+  useEffect(() => {
+    if (!isComplete || savedRef.current) return;
+    savedRef.current = true;
+
+    const stepTokenLog = template.steps
+      .map((step) => {
+        const ss = state.stepStates[step.stepId];
+        if (!ss?.tokenUsage || ss.tokenUsage.totalTokens === 0) return null;
+        return {
+          stepId: step.stepId,
+          stepLabel: step.title,
+          promptTokens: ss.tokenUsage.promptTokens,
+          completionTokens: ss.tokenUsage.completionTokens,
+          totalTokens: ss.tokenUsage.totalTokens,
+        };
+      })
+      .filter(Boolean);
+
+    fetch(`/api/workflows/${workflowId}/runs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        runId: state.runId,
+        status: "completed",
+        promptTokens: totalTokenUsage.promptTokens,
+        completionTokens: totalTokenUsage.completionTokens,
+        stepTokenLog,
+      }),
+    }).catch(() => {
+      // Silent fail — run history is non-critical
+    });
+  }, [isComplete, state, template, workflowId, totalTokenUsage]);
 
   // Lazy-load step body components
   const StepComponents = useMemo(() => {
@@ -61,6 +100,7 @@ export function PipelinePageClient({
       }}
       mode={state.mode}
       onModeChange={setMode}
+      totalTokenUsage={totalTokenUsage}
     >
       {template.steps.map((step, i) => {
         const stepState = getStepState(step.stepId);
@@ -82,6 +122,7 @@ export function PipelinePageClient({
               title={step.title}
               status={stepState.status}
               flagCount={flagCount > 0 ? flagCount : undefined}
+              tokenUsage={stepState.tokenUsage}
             >
               {StepBody ? (
                 <Suspense fallback={<StepSkeleton />}>
@@ -99,6 +140,9 @@ export function PipelinePageClient({
                     onResolveFlag={(flagId, resolution) =>
                       resolveFlag(step.stepId, flagId, resolution)
                     }
+                    onUpdateTokenUsage={(usage) =>
+                      updateTokenUsage(step.stepId, usage)
+                    }
                   />
                 </Suspense>
               ) : (
@@ -110,6 +154,11 @@ export function PipelinePageClient({
           </div>
         );
       })}
+
+      {/* Run history */}
+      <div className="mt-8">
+        <RunHistoryPanel workflowId={workflowId} />
+      </div>
     </PipelineBody>
   );
 }

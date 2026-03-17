@@ -18,6 +18,7 @@ export default function GenerationStep({
   onUpdateFlags,
   onResolveFlag,
   onUpdateData,
+  onUpdateTokenUsage,
 }: StepBodyProps) {
   const [running, setRunning] = useState(false);
   const hasRun = useRef(false);
@@ -91,6 +92,7 @@ export default function GenerationStep({
         metrics: data.metrics,
       });
 
+      if (data.tokenUsage) onUpdateTokenUsage(data.tokenUsage);
       setRunning(false);
     } catch (e) {
       onError({ code: "NETWORK", message: String(e) });

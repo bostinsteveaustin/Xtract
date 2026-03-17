@@ -1,6 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  type ReactNode,
+} from "react";
 
 interface WorkflowSummary {
   id: string;
@@ -11,7 +18,18 @@ interface WorkflowSummary {
   updated_at: string;
 }
 
-export function useWorkflows() {
+interface WorkflowsContextValue {
+  workflows: WorkflowSummary[];
+  isLoading: boolean;
+  createWorkflow: (name: string, templateId?: string) => Promise<WorkflowSummary | null>;
+  renameWorkflow: (id: string, name: string) => Promise<void>;
+  deleteWorkflow: (id: string) => Promise<void>;
+  refresh: () => Promise<void>;
+}
+
+const WorkflowsContext = createContext<WorkflowsContextValue | null>(null);
+
+export function WorkflowsProvider({ children }: { children: ReactNode }) {
   const [workflows, setWorkflows] = useState<WorkflowSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -86,5 +104,17 @@ export function useWorkflows() {
     []
   );
 
-  return { workflows, isLoading, createWorkflow, renameWorkflow, deleteWorkflow, refresh };
+  return (
+    <WorkflowsContext value={{ workflows, isLoading, createWorkflow, renameWorkflow, deleteWorkflow, refresh }}>
+      {children}
+    </WorkflowsContext>
+  );
+}
+
+export function useWorkflows() {
+  const ctx = useContext(WorkflowsContext);
+  if (!ctx) {
+    throw new Error("useWorkflows must be used within a WorkflowsProvider");
+  }
+  return ctx;
 }

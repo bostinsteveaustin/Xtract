@@ -17,6 +17,7 @@ export default function CTXStep({
   onError,
   onLogEntry,
   onUpdateData,
+  onUpdateTokenUsage,
 }: StepBodyProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
@@ -76,6 +77,7 @@ export default function CTXStep({
 
       setCtxContent(data.ctxContent);
       onUpdateData({ ctxContent: data.ctxContent });
+      if (data.tokenUsage) onUpdateTokenUsage(data.tokenUsage);
       setRunning(false);
 
       // Add system message
@@ -122,6 +124,7 @@ export default function CTXStep({
         setCtxContent(data.ctxContent);
         onUpdateData({ ctxContent: data.ctxContent });
       }
+      if (data.tokenUsage) onUpdateTokenUsage(data.tokenUsage);
 
       setMessages((prev) => [
         ...prev,

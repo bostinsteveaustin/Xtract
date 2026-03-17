@@ -22,6 +22,7 @@ interface GenerateResult {
     triples: number;
   };
   logEntries: LogEntry[];
+  tokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number };
 }
 
 function ts(): string {
@@ -66,6 +67,9 @@ Map each candidate class to ${input.config.upperOntology} parent classes with fu
     maxOutputTokens: 6000,
   });
 
+  const mappingIn = mappingResult.usage?.inputTokens ?? 0;
+  const mappingOut = mappingResult.usage?.outputTokens ?? 0;
+
   log.push({ timestamp: ts(), level: "info", message: "Upper ontology mapping complete", icon: "check" });
 
   // Step 2: Turtle generation
@@ -106,6 +110,14 @@ Generate a complete, valid Turtle file. Then list ambiguity flags for anything r
     maxOutputTokens: 12000,
   });
 
+  const turtleIn = turtleResult.usage?.inputTokens ?? 0;
+  const turtleOut = turtleResult.usage?.outputTokens ?? 0;
+  const tokenUsage = {
+    promptTokens: mappingIn + turtleIn,
+    completionTokens: mappingOut + turtleOut,
+    totalTokens: mappingIn + mappingOut + turtleIn + turtleOut,
+  };
+
   // Parse turtle and flags
   const fullText = turtleResult.text;
   const flagsSeparator = fullText.indexOf("---FLAGS---");
@@ -145,6 +157,7 @@ Generate a complete, valid Turtle file. Then list ambiguity flags for anything r
     }
   }
 
+  log.push({ timestamp: ts(), level: "info", message: `Tokens: ${tokenUsage.promptTokens.toLocaleString()} in / ${tokenUsage.completionTokens.toLocaleString()} out (2 calls)`, icon: "check" });
   log.push({ timestamp: ts(), level: "info", message: "Ontology generation complete", icon: "check" });
 
   return {
@@ -157,5 +170,6 @@ Generate a complete, valid Turtle file. Then list ambiguity flags for anything r
       triples: tripleCount,
     },
     logEntries: log,
+    tokenUsage,
   };
 }

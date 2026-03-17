@@ -10,6 +10,7 @@ import type {
   LogEntry,
   PipelineFlag,
   FlagResolution,
+  TokenUsage,
 } from "@/types/pipeline";
 
 function initStepStates(template: PipelineTemplate): Record<string, StepState> {
@@ -191,9 +192,44 @@ export function usePipelineExecution(
     []
   );
 
+  const updateTokenUsage = useCallback(
+    (stepId: string, tokenUsage: TokenUsage) => {
+      setState((prev) => {
+        const existing = prev.stepStates[stepId]?.tokenUsage;
+        const merged: TokenUsage = existing
+          ? {
+              promptTokens: existing.promptTokens + tokenUsage.promptTokens,
+              completionTokens: existing.completionTokens + tokenUsage.completionTokens,
+              totalTokens: existing.totalTokens + tokenUsage.totalTokens,
+            }
+          : tokenUsage;
+        return {
+          ...prev,
+          stepStates: {
+            ...prev.stepStates,
+            [stepId]: { ...prev.stepStates[stepId], tokenUsage: merged },
+          },
+        };
+      });
+    },
+    []
+  );
+
   const setMode = useCallback((mode: "guided" | "auto") => {
     setState((prev) => ({ ...prev, mode }));
   }, []);
+
+  const totalTokenUsage = useMemo((): TokenUsage => {
+    let promptTokens = 0;
+    let completionTokens = 0;
+    for (const ss of Object.values(state.stepStates)) {
+      if (ss.tokenUsage) {
+        promptTokens += ss.tokenUsage.promptTokens;
+        completionTokens += ss.tokenUsage.completionTokens;
+      }
+    }
+    return { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens };
+  }, [state.stepStates]);
 
   const pendingFlagCount = useMemo(() => {
     if (!currentStep) return 0;
@@ -213,7 +249,9 @@ export function usePipelineExecution(
     addLogEntry,
     updateFlags,
     resolveFlag,
+    updateTokenUsage,
     setMode,
+    totalTokenUsage,
     pendingFlagCount,
   };
 }

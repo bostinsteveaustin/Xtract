@@ -1,5 +1,5 @@
 import type { ComponentType } from "react";
-import type { StepState, LogEntry, PipelineFlag, FlagResolution } from "@/types/pipeline";
+import type { StepState, LogEntry, PipelineFlag, FlagResolution, TokenUsage } from "@/types/pipeline";
 
 export interface StepBodyProps {
   workflowId: string;
@@ -13,6 +13,7 @@ export interface StepBodyProps {
   onLogEntry: (entry: LogEntry) => void;
   onUpdateFlags: (flags: PipelineFlag[]) => void;
   onResolveFlag: (flagId: string, resolution: FlagResolution) => void;
+  onUpdateTokenUsage: (tokenUsage: TokenUsage) => void;
 }
 
 export type StepBodyComponent = ComponentType<StepBodyProps>;

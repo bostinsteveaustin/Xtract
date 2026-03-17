@@ -79,6 +79,7 @@ export interface StepState {
   error?: { code: string; message: string };
   flags: PipelineFlag[];
   logEntries: LogEntry[];
+  tokenUsage?: TokenUsage;
 }
 
 export interface PipelineExecutionState {
@@ -93,6 +94,14 @@ export interface PipelineExecutionState {
     completedAt?: string;
     initiatedBy: string;
   };
+}
+
+// ─── Token Usage ─────────────────────────────────────────────────
+
+export interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
 }
 
 // ─── Interaction component props contracts ────────────────────────

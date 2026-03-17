@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import type { TokenUsage } from "@/types/pipeline";
 
 interface PipelineMetadata {
   templateName: string;
@@ -12,13 +13,20 @@ interface PipelineBodyProps {
   metadata?: PipelineMetadata;
   mode: "guided" | "auto";
   onModeChange: (mode: "guided" | "auto") => void;
+  totalTokenUsage?: TokenUsage;
   children: ReactNode;
+}
+
+function formatTokens(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return String(n);
 }
 
 export function PipelineBody({
   metadata,
   mode,
   onModeChange,
+  totalTokenUsage,
   children,
 }: PipelineBodyProps) {
   return (
@@ -36,6 +44,14 @@ export function PipelineBody({
               )}
               {metadata.runId && (
                 <span className="font-mono text-xs">{metadata.runId}</span>
+              )}
+              {totalTokenUsage && totalTokenUsage.totalTokens > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-background border px-2 py-0.5 text-xs font-mono">
+                  <span className="text-[var(--pipeline-navy)] font-medium">
+                    {formatTokens(totalTokenUsage.totalTokens)}
+                  </span>
+                  <span>tokens</span>
+                </span>
               )}
             </div>
 

@@ -20,11 +20,13 @@ interface CTXResult {
     references: number;
   };
   logEntries: LogEntry[];
+  tokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number };
 }
 
 interface CTXEnrichmentResult {
   ctxContent: string;
   response: string;
+  tokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number };
 }
 
 function ts(): string {
@@ -73,6 +75,9 @@ Produce a complete .ctx file that merges the structured candidates with tacit kn
     });
 
     const ctxContent = result.text;
+    const inTok = result.usage?.inputTokens ?? 0;
+    const outTok = result.usage?.outputTokens ?? 0;
+    const tokenUsage = { promptTokens: inTok, completionTokens: outTok, totalTokens: inTok + outTok };
 
     // Count sections
     const definitions = (ctxContent.match(/@definition/g) ?? []).length;
@@ -80,12 +85,14 @@ Produce a complete .ctx file that merges the structured candidates with tacit kn
     const references = (ctxContent.match(/@reference_data/g) ?? []).length;
 
     log.push({ timestamp: ts(), level: "info", message: `CTX produced: ${definitions} definitions, ${tacitKnowledge} tacit knowledge entries`, icon: "check" });
+    log.push({ timestamp: ts(), level: "info", message: `Tokens: ${tokenUsage.promptTokens.toLocaleString()} in / ${tokenUsage.completionTokens.toLocaleString()} out`, icon: "check" });
     log.push({ timestamp: ts(), level: "info", message: "CTX file ready for review", icon: "check" });
 
     return {
       ctxContent,
       metrics: { definitions, tacitKnowledge, references },
       logEntries: log,
+      tokenUsage,
     };
   } catch (e) {
     log.push({ timestamp: ts(), level: "error", message: `Claude API error: ${String(e)}`, icon: "cross" });
@@ -114,11 +121,15 @@ Update the CTX file to incorporate this new information.`,
   });
 
   const text = result.text;
+  const inTok = result.usage?.inputTokens ?? 0;
+  const outTok = result.usage?.outputTokens ?? 0;
+  const tokenUsage = { promptTokens: inTok, completionTokens: outTok, totalTokens: inTok + outTok };
   const ctxMatch = text.match(/---CTX---\n?([\s\S]*?)---RESPONSE---/);
   const responseMatch = text.match(/---RESPONSE---\n?([\s\S]*?)$/);
 
   return {
     ctxContent: ctxMatch?.[1]?.trim() ?? input.ctxContent,
     response: responseMatch?.[1]?.trim() ?? "Context updated.",
+    tokenUsage,
   };
 }

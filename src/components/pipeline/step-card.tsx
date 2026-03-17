@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Check, ChevronDown, AlertTriangle, Loader2 } from "lucide-react";
-import type { StepStatus } from "@/types/pipeline";
+import type { StepStatus, TokenUsage } from "@/types/pipeline";
 import { cn } from "@/lib/utils";
 
 interface StepCardProps {
@@ -11,8 +11,14 @@ interface StepCardProps {
   title: string;
   status: StepStatus;
   flagCount?: number;
+  tokenUsage?: TokenUsage;
   children: ReactNode;
   actionBar?: ReactNode;
+}
+
+function formatTokens(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return String(n);
 }
 
 const statusConfig: Record<
@@ -62,6 +68,7 @@ export function StepCard({
   title,
   status,
   flagCount,
+  tokenUsage,
   children,
   actionBar,
 }: StepCardProps) {
@@ -124,6 +131,13 @@ export function StepCard({
             {title}
           </p>
         </div>
+
+        {/* Token usage badge */}
+        {tokenUsage && tokenUsage.totalTokens > 0 && (
+          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-mono text-slate-600">
+            {formatTokens(tokenUsage.totalTokens)}
+          </span>
+        )}
 
         {/* Flag count badge */}
         {flagCount != null && flagCount > 0 && (
