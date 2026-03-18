@@ -12,6 +12,7 @@ import type { PipelineTemplate } from "@/types/pipeline";
 
 interface PipelinePageClientProps {
   workflowId: string;
+  workflowName: string;
   template: PipelineTemplate;
 }
 
@@ -27,6 +28,7 @@ function StepSkeleton() {
 
 export function PipelinePageClient({
   workflowId,
+  workflowName,
   template,
 }: PipelinePageClientProps) {
   const {
@@ -94,6 +96,8 @@ export function PipelinePageClient({
 
   return (
     <PipelineBody
+      workflowId={workflowId}
+      workflowName={workflowName}
       metadata={{
         templateName: template.name,
         runId: state.runId,

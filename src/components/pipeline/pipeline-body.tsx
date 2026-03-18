@@ -1,6 +1,11 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { Pencil, Trash2, Check, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useWorkflows } from "@/hooks/use-workflows";
 import type { TokenUsage } from "@/types/pipeline";
 
 interface PipelineMetadata {
@@ -10,6 +15,8 @@ interface PipelineMetadata {
 }
 
 interface PipelineBodyProps {
+  workflowId: string;
+  workflowName: string;
   metadata?: PipelineMetadata;
   mode: "guided" | "auto";
   onModeChange: (mode: "guided" | "auto") => void;
@@ -23,14 +30,111 @@ function formatTokens(n: number): string {
 }
 
 export function PipelineBody({
+  workflowId,
+  workflowName,
   metadata,
   mode,
   onModeChange,
   totalTokenUsage,
   children,
 }: PipelineBodyProps) {
+  const router = useRouter();
+  const { renameWorkflow, deleteWorkflow } = useWorkflows();
+  const [displayName, setDisplayName] = useState(workflowName);
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(workflowName);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleSaveRename = async () => {
+    const trimmed = editValue.trim();
+    if (!trimmed || trimmed === displayName) {
+      setEditing(false);
+      return;
+    }
+    await renameWorkflow(workflowId, trimmed);
+    setDisplayName(trimmed);
+    setEditing(false);
+  };
+
+  const handleDelete = async () => {
+    if (!confirm("Delete this pipeline? This cannot be undone.")) return;
+    setDeleting(true);
+    await deleteWorkflow(workflowId);
+    router.push("/workflows");
+  };
+
   return (
     <div className="flex-1 overflow-y-auto">
+      {/* Pipeline header with editable name */}
+      <div className="border-b px-4 py-3">
+        <div className="max-w-[760px] mx-auto flex items-center gap-3">
+          {editing ? (
+            <div className="flex items-center gap-2 flex-1">
+              <Input
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveRename();
+                  if (e.key === "Escape") {
+                    setEditing(false);
+                    setEditValue(displayName);
+                  }
+                }}
+                autoFocus
+                className="h-8 text-base font-semibold"
+              />
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                onClick={handleSaveRename}
+              >
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8"
+                onClick={() => {
+                  setEditing(false);
+                  setEditValue(displayName);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <h1 className="text-lg font-semibold text-foreground flex-1 truncate">
+                {displayName}
+              </h1>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setEditValue(displayName);
+                  setEditing(true);
+                }}
+                title="Rename pipeline"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                onClick={handleDelete}
+                disabled={deleting}
+                title="Delete pipeline"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Metadata bar */}
       {metadata && (
         <div className="bg-[var(--pipeline-surface)] border-b px-4 py-2">

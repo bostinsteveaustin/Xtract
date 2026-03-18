@@ -40,6 +40,7 @@ export default async function WorkflowPage({
   return (
     <PipelinePageClient
       workflowId={workflow.id}
+      workflowName={workflow.name}
       template={template ?? getDefaultTemplate()}
     />
   );
