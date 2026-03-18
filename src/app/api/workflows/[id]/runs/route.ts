@@ -56,7 +56,8 @@ export async function POST(
         tokens_used: promptTokens + completionTokens,
         prompt_tokens: promptTokens,
         completion_tokens: completionTokens,
-        step_token_log: stepTokenLog,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        step_token_log: stepTokenLog as any,
         ctx_content: ctxContent ?? null,
         started_at: new Date().toISOString(),
         completed_at: status === "completed" ? new Date().toISOString() : null,
