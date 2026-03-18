@@ -66,13 +66,13 @@ Output as JSON with format:
   ]
 }`,
     prompt: `Candidates:
-${JSON.stringify(input.candidates, null, 2).slice(0, 4000)}
+${JSON.stringify(input.candidates, null, 2).slice(0, 12000)}
 
 CTX context:
-${input.ctxContent.slice(0, 3000)}
+${input.ctxContent.slice(0, 8000)}
 
-Map each candidate class to ${input.config.upperOntology} parent classes with SKOS annotations. Be concise.`,
-    maxOutputTokens: 3000,
+Map each candidate class to ${input.config.upperOntology} parent classes with full SKOS annotations enriched by the CTX tacit knowledge.`,
+    maxOutputTokens: 6000,
   });
 
   const inTok = mappingResult.usage?.inputTokens ?? 0;
@@ -99,28 +99,37 @@ export async function generateTurtle(input: GenerateInput & { mappingText: strin
 
   const turtleResult = await generateText({
     model: extractionModel,
-    system: `You are an OWL ontology generator. Output a valid Turtle (.ttl) file.
+    system: `You are an OWL ontology generator. Generate a valid, comprehensive Turtle (.ttl) file from the provided mapping and candidate data.
 
-Include: @prefix declarations, owl:Ontology header, classes (rdfs:subClassOf + skos:prefLabel/definition), object properties (domain/range), data properties (XSD range). Use the provided namespace.
+Requirements:
+- Include proper @prefix declarations (owl, rdf, rdfs, skos, xsd, gist, and the domain namespace)
+- Generate owl:Ontology declaration with owl:versionInfo and rdfs:comment
+- All classes with rdfs:subClassOf, skos:prefLabel, skos:definition, skos:scopeNote, rdfs:isDefinedBy
+- All object properties with rdfs:domain, rdfs:range, skos:prefLabel, skos:definition, owl:inverseOf where applicable
+- All data properties with rdfs:domain, rdfs:range (XSD types), skos:prefLabel, skos:definition
+- Use the provided namespace for all domain entities
 
 After the Turtle, add "---FLAGS---" followed by a JSON array of ambiguity flags:
-[{ "id": "FLAG-001", "type": "missing_taxonomy|contested_classification|absent_field|inferred_class|data_quality", "entity": "...", "description": "...", "source": "...", "suggestedResolution": "...", "requiresHumanInput": true }]
+Each flag: { "id": "FLAG-NNN", "type": "missing_taxonomy|contested_classification|absent_field|inferred_class|data_quality", "entity": "...", "description": "...", "source": "...", "suggestedResolution": "...", "requiresHumanInput": true/false }
 
-Be concise. Omit scopeNote if it would just repeat the definition.`,
-    prompt: `Mappings:
-${input.mappingText.slice(0, 3500)}
+Output format:
+[Turtle content]
+---FLAGS---
+[JSON array of flags]`,
+    prompt: `Upper ontology mappings:
+${input.mappingText.slice(0, 8000)}
 
-Candidates:
-${JSON.stringify(input.candidates, null, 2).slice(0, 3500)}
+Full candidates:
+${JSON.stringify(input.candidates, null, 2).slice(0, 8000)}
 
-CTX:
-${input.ctxContent.slice(0, 2000)}
+CTX context:
+${input.ctxContent.slice(0, 6000)}
 
 Namespace: ${namespace}
-Title: ${input.config.ontologyTitle || "Domain Ontology"}
+Ontology title: ${input.config.ontologyTitle || "Domain Ontology"}
 
-Generate Turtle then flags.`,
-    maxOutputTokens: 4000,
+Generate a complete, valid Turtle file with full SKOS annotations. Then list ambiguity flags for anything requiring human review.`,
+    maxOutputTokens: 12000,
   });
 
   const inTok = turtleResult.usage?.inputTokens ?? 0;

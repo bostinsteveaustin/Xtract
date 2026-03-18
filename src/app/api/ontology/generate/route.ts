@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { generateMapping, generateTurtle } from "@/lib/ontology/ontology-generator";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   try {
