@@ -12,7 +12,7 @@ export async function GET(
 
     const { data: runs, error } = await supabase
       .from("workflow_runs")
-      .select("id, status, tokens_used, prompt_tokens, completion_tokens, step_token_log, started_at, completed_at, created_at")
+      .select("id, status, tokens_used, prompt_tokens, completion_tokens, step_token_log, ctx_content, started_at, completed_at, created_at")
       .eq("workflow_id", id)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -36,12 +36,13 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { runId, status, promptTokens, completionTokens, stepTokenLog } = body as {
+    const { runId, status, promptTokens, completionTokens, stepTokenLog, ctxContent } = body as {
       runId?: string;
       status: string;
       promptTokens: number;
       completionTokens: number;
       stepTokenLog: unknown[];
+      ctxContent?: string;
     };
 
     const supabase = createAdminClient();
@@ -56,6 +57,7 @@ export async function POST(
         prompt_tokens: promptTokens,
         completion_tokens: completionTokens,
         step_token_log: stepTokenLog,
+        ctx_content: ctxContent ?? null,
         started_at: new Date().toISOString(),
         completed_at: status === "completed" ? new Date().toISOString() : null,
       })

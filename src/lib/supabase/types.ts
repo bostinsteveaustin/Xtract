@@ -208,6 +208,10 @@ export interface Database {
           run_by: string | null;
           error_message: string | null;
           tokens_used: number;
+          prompt_tokens: number;
+          completion_tokens: number;
+          step_token_log: Json;
+          ctx_content: string | null;
           created_at: string;
         };
         Insert: {
@@ -222,6 +226,10 @@ export interface Database {
           run_by?: string | null;
           error_message?: string | null;
           tokens_used?: number;
+          prompt_tokens?: number;
+          completion_tokens?: number;
+          step_token_log?: Json;
+          ctx_content?: string | null;
           created_at?: string;
         };
         Update: {
@@ -236,6 +244,10 @@ export interface Database {
           run_by?: string | null;
           error_message?: string | null;
           tokens_used?: number;
+          prompt_tokens?: number;
+          completion_tokens?: number;
+          step_token_log?: Json;
+          ctx_content?: string | null;
           created_at?: string;
         };
         Relationships: [];

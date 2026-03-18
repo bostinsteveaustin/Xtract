@@ -67,6 +67,8 @@ export function PipelinePageClient({
       })
       .filter(Boolean);
 
+    const ctxContent = state.stepStates["ctx-production"]?.data?.ctxContent as string | undefined;
+
     fetch(`/api/workflows/${workflowId}/runs`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -76,6 +78,7 @@ export function PipelinePageClient({
         promptTokens: totalTokenUsage.promptTokens,
         completionTokens: totalTokenUsage.completionTokens,
         stepTokenLog,
+        ctxContent,
       }),
     }).catch(() => {
       // Silent fail — run history is non-critical

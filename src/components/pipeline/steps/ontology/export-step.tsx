@@ -47,6 +47,7 @@ export default function ExportStep({
     const resolvedFlags = allStepStates["ontology-generation"]?.data?.resolvedFlags as unknown[] | undefined;
     const configData = allStepStates.configuration?.data;
     const config = configData?.config as Record<string, string> | undefined;
+    const ctxContent = allStepStates["ctx-production"]?.data?.ctxContent as string | undefined;
 
     if (!turtle) {
       onError({ code: "NO_INPUT", message: "No ontology Turtle content found" });
@@ -77,11 +78,21 @@ export default function ExportStep({
 
       const data = await res.json();
 
+      // Prepend CTX file so it appears first in the download grid
+      const ctxFile: FileData | null = ctxContent
+        ? {
+            name: "context.ctx",
+            size: `${(new TextEncoder().encode(ctxContent).length / 1024).toFixed(1)} KB`,
+            format: "ctx",
+            content: ctxContent,
+          }
+        : null;
+
       // Persist to step data so it survives collapse/expand
       onUpdateData({
         metrics: data.metrics,
         benchmarkResults: data.benchmarkResults,
-        files: data.files, // raw file data with content strings
+        files: ctxFile ? [ctxFile, ...data.files] : data.files,
       });
 
       setRunning(false);
