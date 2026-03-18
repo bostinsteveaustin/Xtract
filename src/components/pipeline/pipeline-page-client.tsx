@@ -106,6 +106,11 @@ export function PipelinePageClient({
       onModeChange={setMode}
       totalTokenUsage={totalTokenUsage}
     >
+      {/* Run history */}
+      <div className="mb-8">
+        <RunHistoryPanel workflowId={workflowId} />
+      </div>
+
       {template.steps.map((step, i) => {
         const stepState = getStepState(step.stepId);
         const StepBody = StepComponents[step.stepId];
@@ -158,11 +163,6 @@ export function PipelinePageClient({
           </div>
         );
       })}
-
-      {/* Run history */}
-      <div className="mt-8">
-        <RunHistoryPanel workflowId={workflowId} />
-      </div>
     </PipelineBody>
   );
 }

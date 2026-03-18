@@ -56,15 +56,15 @@ export function RunHistoryPanel({ workflowId }: RunHistoryPanelProps) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
 
+  // Always fetch on mount so the count badge is visible even when collapsed
   useEffect(() => {
-    if (!open) return;
     setLoading(true);
     fetch(`/api/workflows/${workflowId}/runs`)
       .then((r) => r.json())
       .then((data) => setRuns(data.runs ?? []))
       .catch(() => setRuns([]))
       .finally(() => setLoading(false));
-  }, [workflowId, open]);
+  }, [workflowId]);
 
   return (
     <div className="border rounded-lg bg-card">
