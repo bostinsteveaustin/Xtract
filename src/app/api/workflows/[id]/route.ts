@@ -2,7 +2,6 @@
 // DELETE /api/workflows/[id] — Delete workflow
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function PATCH(
@@ -11,15 +10,6 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await request.json();
     const { name } = body as { name?: string };
 
@@ -30,8 +20,8 @@ export async function PATCH(
       );
     }
 
-    const admin = createAdminClient();
-    const { data: workflow, error } = await admin
+    const supabase = createAdminClient();
+    const { data: workflow, error } = await supabase
       .from("workflows")
       .update({ name: name.trim(), updated_at: new Date().toISOString() })
       .eq("id", id)
@@ -39,8 +29,9 @@ export async function PATCH(
       .single();
 
     if (error) {
+      console.error("PATCH /api/workflows/[id] DB error:", error);
       return NextResponse.json(
-        { error: "Failed to update workflow" },
+        { error: error.message },
         { status: 500 }
       );
     }
@@ -61,24 +52,16 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const admin = createAdminClient();
-    const { error } = await admin
+    const supabase = createAdminClient();
+    const { error } = await supabase
       .from("workflows")
       .delete()
       .eq("id", id);
 
     if (error) {
+      console.error("DELETE /api/workflows/[id] DB error:", error);
       return NextResponse.json(
-        { error: "Failed to delete workflow" },
+        { error: error.message },
         { status: 500 }
       );
     }

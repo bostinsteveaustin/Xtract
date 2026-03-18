@@ -46,10 +46,10 @@ export async function POST(
 
     const supabase = createAdminClient();
 
+    // Let DB generate UUID — runId is a nanoid string, not UUID
     const { data: run, error } = await supabase
       .from("workflow_runs")
       .insert({
-        id: runId,
         workflow_id: id,
         status,
         tokens_used: promptTokens + completionTokens,
@@ -58,7 +58,6 @@ export async function POST(
         step_token_log: stepTokenLog,
         started_at: new Date().toISOString(),
         completed_at: status === "completed" ? new Date().toISOString() : null,
-        node_states: {},
       })
       .select()
       .single();
