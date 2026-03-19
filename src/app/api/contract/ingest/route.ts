@@ -9,6 +9,15 @@ import type { LogEntry } from "@/types/pipeline";
 
 export const maxDuration = 300;
 
+// PDFs base64-encoded can be large — raise the body limit
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: "20mb",
+    },
+  },
+};
+
 function ts(): string {
   return new Date().toISOString().slice(11, 19);
 }

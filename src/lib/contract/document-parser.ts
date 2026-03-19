@@ -86,11 +86,12 @@ export async function parseDocument(
     const buffer = Buffer.from(fileContentBase64, "base64");
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse = require("pdf-parse");
+      // pdf-parse v2 — class-based API
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+      const PDFParse = require("pdf-parse") as any;
+      const pdf = await new PDFParse({ data: buffer });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const result = await pdfParse(buffer) as any;
-      text = result.text as string;
+      text = (pdf as any).text as string;
     } catch (e) {
       throw new Error(`PDF parsing failed: ${String(e)}`);
     }
