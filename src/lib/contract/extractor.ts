@@ -79,7 +79,7 @@ Output a single JSON object:
   "agreement": {
     "agreementID": "icml:AGR-${engagementRef}-001",
     "title": "Master Services Agreement",
-    "agreementType": "msa|sow|amendment|side_letter|schedule|licence|nda|services_agreement|supply_agreement|other",
+    "agreementType": "msa|sow|amendment|side_letter|schedule|licence|nda|services_agreement|supply_agreement|employment_agreement|other",
     "effectiveDate": "2026-01-01",
     "expiryDate": "2029-01-01",
     "initialTerm": "3 years",
@@ -213,7 +213,7 @@ Return ONLY this JSON structure:
     "executionDate": "YYYY-MM-DD or null",
     "governingLaw": "e.g. Laws of England and Wales or null",
     "jurisdiction": "e.g. Courts of England and Wales or null",
-    "agreementType": "msa|sow|amendment|side_letter|schedule|licence|nda|services_agreement|supply_agreement|other or null"
+    "agreementType": "msa|sow|amendment|side_letter|schedule|licence|nda|services_agreement|supply_agreement|employment_agreement|other or null"
   },
   "disputeResolution": {
     "disputeID": "icml:DSP-${engagementRef}-001",

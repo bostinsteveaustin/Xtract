@@ -41,6 +41,7 @@ export type AgreementType =
   | "nda"
   | "services_agreement"
   | "supply_agreement"
+  | "employment_agreement"
   | "other";
 
 export interface Agreement {

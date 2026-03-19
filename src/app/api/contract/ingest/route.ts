@@ -32,11 +32,12 @@ async function classifyDocument(
     model: extractionModel,
     system: `You are a contract classification specialist. Analyse the opening sections of a contract and return JSON only.`,
     prompt: `Analyse this contract document and return a JSON object with:
-- documentType: one of "msa" | "sow" | "amendment" | "side_letter" | "schedule" | "licence" | "nda" | "services_agreement" | "supply_agreement" | "other"
-- partiesFound: array of { name: string, role: "service_provider"|"client"|"guarantor"|"other" }
+- documentType: one of "msa" | "sow" | "amendment" | "side_letter" | "schedule" | "licence" | "nda" | "services_agreement" | "supply_agreement" | "employment_agreement" | "other"
+- partiesFound: array of { name: string, role: "service_provider"|"client"|"guarantor"|"employer"|"employee"|"other" }
 - summary: one sentence describing what this agreement is about
 
 Classification rules:
+- "employment_agreement" = Contract of employment between an employer and individual employee. Keywords: "employment", "employee", "employer", "salary", "notice period", "duties", "place of work", "holiday entitlement", "probationary period". Roles: employer / employee.
 - "sow" = Statement of Work — defines a specific, bounded piece of work with deliverables, milestones, project timeline, and/or specific fees. Usually references a parent MSA or framework agreement. Keywords: "Statement of Work", "SOW", "Phase", "Deliverables", "Milestone", "Project", specific start/end dates.
 - "msa" = Master Services Agreement — sets general terms and conditions (payment, IP, liability, confidentiality) that apply across future work. Does NOT define the actual work scope in detail — that is left to SOWs or call-off orders. Keywords: "Master", "Framework", "General Terms", "as agreed in each Statement of Work".
 - "services_agreement" = Standalone agreement combining framework terms AND a specific work scope in one document. No separate MSA is referenced.

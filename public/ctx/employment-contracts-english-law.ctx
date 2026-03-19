@@ -1,0 +1,195 @@
+@metadata
+name: Employment Contract Extraction — English Law
+version: 1.0.0
+domain: employment_agreement
+jurisdiction: England and Wales
+author: BridgingX / Xtract
+status: active
+target_pipeline: contract-extraction-v1
+agreement_types: employment_agreement
+description: Extraction guidance for contracts of employment governed by English law. Covers remuneration, post-termination restrictions, IP assignment, confidentiality, termination, statutory rights, data protection, pension and holiday. Use this CTX when processing employment agreements, service agreements with employment characteristics, or consultancy agreements that may be disguised employment.
+
+@statutory_framework
+The following statutes create rights that CANNOT be contracted out of. Flag any contractual term that purports to exclude them.
+
+- Employment Rights Act 1996 (ERA 1996): unfair dismissal (after 2 years), minimum notice, written statement of particulars, redundancy pay, whistleblowing protection
+- Working Time Regulations 1998 (WTR): 48-hour weekly limit (opt-out possible), minimum 28 days paid holiday (inc. bank holidays), rest breaks
+- National Minimum Wage Act 1998: current rates by age band — flag if salary divided by hours approaches NMW
+- Equality Act 2010: protected characteristics, equal pay, discrimination claims — flag any clause that could discriminate
+- UK GDPR / Data Protection Act 2018: employee as data subject, employer as controller — separate data processing notice usually required
+- Pensions Act 2008: auto-enrolment obligation on employer — flag if pension clause is absent
+- Transfer of Undertakings (Protection of Employment) Regulations 2006 (TUPE): may apply to predecessors of this employment
+- Trade Union and Labour Relations (Consolidation) Act 1992 (TULRCA): collective bargaining, union recognition
+
+@confidence_rules
+Apply these rules when assigning confidence levels to extracted objects.
+
+HIGH confidence:
+- Term is expressly stated with a specific value (salary amount, notice period in days/weeks/months)
+- Clause text leaves no ambiguity and requires no interpretation
+- Term matches a standard formulation (e.g. "the Employee shall give X weeks' notice")
+
+MEDIUM confidence:
+- Term is strongly implied but not expressly stated (e.g. PILON implied by "at the Company's discretion")
+- Cross-reference required to another clause or schedule to establish the full term
+- Term is present but ambiguously drafted
+
+LOW confidence:
+- Term is inferred from context rather than stated
+- Implied term under common law not expressly included (e.g. mutual trust and confidence)
+- Drafting is ambiguous or contradictory
+
+@pitfalls
+
+1. Basic salary vs total remuneration
+   Do not conflate "basic salary" with what the employee actually earns. Total remuneration may include: car allowance (sometimes pensionable), health insurance, life assurance, bonus (if contractual), commission, pension contributions, share options, expense allowances. Extract each element separately. Flag if the contract only states basic salary but other remuneration elements are referenced elsewhere without being quantified.
+
+2. Discretionary vs contractual bonus
+   A bonus described as "discretionary" is generally not a contractual entitlement. However, if the contract sets out a specific formula, targets, or payment dates, it may have become contractual through custom and practice. Flag any bonus clause as medium confidence if it uses discretionary language but specifies a calculation method or historical precedent. The employer's right to withhold a discretionary bonus is NOT absolute — they must not act irrationally or in bad faith (Horkulak v Cantor Fitzgerald).
+
+3. PILON and garden leave interaction — commercially critical
+   Payment in Lieu of Notice (PILON) and garden leave are distinct mechanisms with different consequences:
+   - PILON: employer pays the notice period in a lump sum and terminates immediately. If PILON is contractual (express clause), it is not damages — it is a contractual payment and therefore does not breach the contract. If no PILON clause exists, paying in lieu is a breach, even if accepted.
+   - Garden leave: employee remains employed (continues to accrue salary, benefits, holidays, restrictive covenant protection) but is excluded from duties. Garden leave period typically counts toward and reduces post-termination restriction periods — CHECK the restriction clause for this mechanism.
+   Extract PILON and garden leave as separate TerminationProvision objects. Note any interaction clauses explicitly.
+
+4. Non-solicitation vs non-dealing vs non-compete — these are distinct obligations
+   - Non-compete: prevents the employee from working for / setting up a competing business. Geographic and temporal scope critical. Must be proportionate to the employer's legitimate business interest.
+   - Non-solicitation (clients): prevents the employee from approaching the employer's clients. Usually narrower than non-compete. Note whether "approach" or "deal with" is the trigger.
+   - Non-solicitation (employees): prevents poaching of the employer's staff.
+   - Non-dealing: goes further than non-solicitation — prevents the employee from dealing with clients at all, even if the client approaches them. Harder to enforce.
+   Extract each as a separate obligation. Never merge them. Note the duration, geographic scope, and whether limited to "active clients" or all clients.
+
+5. Enforceability of restrictive covenants
+   Under English law, restrictive covenants in employment contracts are prima facie void as restraint of trade unless the employer can demonstrate: (a) a legitimate business interest to protect, and (b) the restriction goes no further than reasonably necessary. Flag covenants over 12 months as potentially unenforceable. Flag worldwide geographic scope as high risk. The "blue pencil" doctrine allows courts to sever unenforceable parts — but courts will not rewrite covenants. Mark overly broad covenants as high-risk in riskLevel.
+
+6. IP assignment scope — post-termination cooperation often missed
+   IP assignment clauses typically have three components:
+   (a) assignment of works created during employment (usually automatic under s.11 Patents Act 1977 for inventions; s.11 CDPA 1988 for copyright);
+   (b) obligation to disclose IP created;
+   (c) POST-TERMINATION cooperation obligation — employee must sign documents, assist with registrations, etc. after leaving. This obligation is often indefinite and is frequently buried in boilerplate. Extract it as a separate obligation with survivalPeriod = "indefinite" or as stated.
+
+7. Confidentiality — survival and scope
+   Confidentiality obligations typically survive termination indefinitely. The definition of "Confidential Information" is critical — is it limited to information marked confidential, or does it include all business information? Extract the scope definition. Flag if confidentiality is stated to survive termination but no duration is specified — under English law this is enforceable indefinitely for genuine trade secrets but time-limited for lesser confidential information.
+
+8. Probationary period — different notice terms apply
+   Many contracts have a probationary period (typically 3–6 months) with shorter notice terms (e.g. 1 week instead of 1 month). This creates two different termination regimes. Extract both as separate TerminationProvision objects. Flag if the contract is silent on notice during probation — statutory minimum (1 week after 1 month's service) applies.
+
+9. Holiday — statutory minimum and termination calculation
+   Statutory minimum is 28 days including bank holidays (5.6 weeks for full-time employees). The contract may provide more but cannot provide less. At termination, accrued but untaken holiday is a financial liability (1/260th formula is standard for 5-day week workers). Also check: does the contract allow carry-over? UK GDPR-era working time case law (Smith v Pimlico, Harpur Trust v Brazel) has expanded carry-over rights significantly — flag if carry-over clause is absent or overly restrictive.
+
+10. Working Time Regulations opt-out
+    If the contract includes a 48-hour WTR opt-out, this is valid under English law but the employee can withdraw with 7 days' notice (or longer as agreed, up to 3 months). Flag the opt-out as a compliance obligation. If no opt-out is present, employer must monitor working hours.
+
+11. Implied terms — not written but legally binding
+    English employment contracts carry statutory and common law implied terms whether or not they appear in writing:
+    - Mutual trust and confidence (employer and employee)
+    - Fidelity and good faith (employee)
+    - Care and skill (employee)
+    - Safe system of work (employer)
+    - Payment of wages (employer)
+    Flag if a written term appears to breach mutual trust and confidence (e.g. broad unilateral variation clauses).
+
+12. Data protection — separate notice required
+    UK GDPR requires employers to provide a privacy notice to employees explaining how their personal data is processed. This is usually a separate document, not the employment contract itself. Flag if the contract attempts to include data protection consent as a term — employee consent is generally not a valid lawful basis under UK GDPR due to the power imbalance. The appropriate basis is usually "performance of contract" or "legal obligation". Extract any data protection obligations as compliance obligations.
+
+@assessment_criteria
+Priority extraction targets for employment agreements (in order of commercial significance):
+
+1. REMUNERATION PACKAGE (critical)
+   - Basic annual salary (amount, currency, payment date, payment method)
+   - Bonus (contractual or discretionary, formula, cap, payment timing, clawback)
+   - Commission (rate, targets, payment mechanics, treatment on termination)
+   - Car allowance (amount, pensionable or not)
+   - Pension (employer contribution rate, scheme, auto-enrolment)
+   - Benefits (health insurance, life assurance, other)
+   - Share options / LTIP (if referenced — note separately)
+
+2. POST-TERMINATION RESTRICTIONS (critical — legal risk)
+   - Non-compete: duration, geographic scope, activities restricted
+   - Non-solicitation of clients: duration, scope (active clients only vs all clients)
+   - Non-dealing with clients: duration, scope
+   - Non-solicitation of employees: duration, seniority threshold
+   - Garden leave reduction mechanism (does garden leave count toward restrictions?)
+   - Geographic scope — England only vs UK vs worldwide
+
+3. TERMINATION PROVISIONS (critical)
+   - Notice period (during employment, during probation)
+   - PILON (contractual or not, basic salary only or full package?)
+   - Garden leave (express clause, period, interaction with restrictions)
+   - Summary dismissal triggers
+   - Consequences of termination (return of property, accrued holiday)
+
+4. IP ASSIGNMENT (high)
+   - Scope of assignment (works created during employment, during working hours, using company resources)
+   - Pre-existing IP carve-out (if employee brings prior IP)
+   - Post-termination cooperation obligation (duration, nature)
+   - Moral rights waiver
+
+5. CONFIDENTIALITY (high)
+   - Definition of confidential information (narrow vs broad)
+   - Carve-outs (publicly available, own knowledge)
+   - Survival period (usually indefinite for trade secrets)
+   - Return/destruction of confidential materials on termination
+
+6. ROLE AND REPORTING (medium)
+   - Job title and description
+   - Place of work / hybrid/remote arrangements
+   - Reporting line
+   - Mobility clause (obligation to relocate)
+
+7. HOLIDAY AND WORKING TIME (medium)
+   - Holiday entitlement (days per year including/excluding bank holidays)
+   - Holiday accrual and carry-over
+   - WTR 48-hour opt-out
+   - Overtime — paid or unpaid
+
+8. SICKNESS AND ABSENCE (medium)
+   - Sick pay (contractual vs SSP only)
+   - Duration of sick pay entitlement
+   - Return-to-work requirements
+
+9. DISCIPLINARY AND GRIEVANCE (lower — but note ACAS code reference)
+   - Reference to disciplinary/grievance procedure
+   - Incorporated by reference vs set out in full
+   - Any enhanced process (additional steps for senior employees)
+
+10. GOVERNING LAW AND JURISDICTION (high — usually England and Wales for English employment contracts)
+    - Governing law
+    - Exclusive jurisdiction
+    - Note if different from place of work (cross-border element)
+
+@ai_guidance
+When processing an employment agreement, apply the following guidance:
+
+DOCUMENT TYPE
+- If the document contains "salary", "notice period", "holiday entitlement", "place of work", and identifies one party as employer and another as employee — classify as employment_agreement
+- Watch for consultancy/contractor agreements that may be disguised employment (IR35) — if the individual works exclusively for one company, is directed and controlled, and cannot substitute someone else — flag as potentially employment relationship with medium confidence
+
+REMUNERATION
+- Always extract basic salary separately from total package
+- If a bonus clause is present, determine whether it is truly discretionary (employer has unfettered discretion to pay nothing) or whether it has contractual characteristics (targets set, formula prescribed, pattern of payment). Flag the distinction explicitly
+- Pension: if auto-enrolment is referenced, note employer contribution rate. If absent, flag — employer has statutory auto-enrolment obligations
+
+POST-TERMINATION RESTRICTIONS
+- Extract EACH restriction as a separate obligation — never merge non-compete, non-solicitation, and non-dealing into one object
+- For each restriction, extract: duration, geographic scope, activities restricted, and whether garden leave reduces the restriction period
+- Flag any restriction over 12 months as high risk (likely unenforceable under English law)
+- Note if the contract was signed at commencement of employment (restrictions more likely enforceable) vs. mid-employment variation (consideration required)
+
+TERMINATION
+- Always check whether PILON is contractual (express clause) or not — this affects tax treatment and enforceability of restrictions
+- Garden leave: note whether it is an express right or merely a discretion
+- If garden leave and restrictions interact (garden leave counts toward restriction period), create a relationship edge between the two objects
+
+IP
+- Look in the IP/confidentiality clause AND in the general provisions / schedule for post-termination cooperation obligations — these are frequently buried
+- If the employee is in a technical/creative role, flag IP assignment as critical
+- Note whether pre-existing IP is carved out — absence of carve-out means company may claim ownership of pre-existing works brought to the role
+
+STATUTORY RIGHTS
+- Do not extract statutory rights as contractual obligations unless the contract expressly improves upon them (e.g. enhanced redundancy pay)
+- Flag if any clause purports to exclude or limit statutory rights — this is void and should be marked as high risk
+
+AGREEMENT TYPE OVERRIDE
+- If the document is clearly an employment contract (employer/employee relationship, salary, notice period, duties) always classify as employment_agreement even if it uses unusual terminology like "consultancy agreement" or "services agreement"
