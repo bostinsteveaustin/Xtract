@@ -1,7 +1,8 @@
 import type { PipelineTemplate } from "@/types/pipeline";
 import { ONTOLOGY_PIPELINE } from "./ontology-pipeline";
+import { CONTRACT_PIPELINE } from "./contract-pipeline";
 
-const TEMPLATES: PipelineTemplate[] = [ONTOLOGY_PIPELINE];
+const TEMPLATES: PipelineTemplate[] = [ONTOLOGY_PIPELINE, CONTRACT_PIPELINE];
 
 export function getTemplate(templateId: string): PipelineTemplate | null {
   return TEMPLATES.find((t) => t.templateId === templateId) ?? null;

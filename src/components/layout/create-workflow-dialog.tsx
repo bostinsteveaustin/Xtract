@@ -76,6 +76,7 @@ export function CreateWorkflowDialog() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ontology-v1">Ontology Pipeline</SelectItem>
+                <SelectItem value="contract-extraction-v1">Contract Extraction</SelectItem>
                 <SelectItem value="blank">Blank Pipeline</SelectItem>
               </SelectContent>
             </Select>

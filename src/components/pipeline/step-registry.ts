@@ -27,6 +27,13 @@ const registry: Record<string, Record<string, () => Promise<{ default: StepBodyC
     "ontology-generation": () => import("./steps/ontology/generation-step"),
     "export-validate": () => import("./steps/ontology/export-step"),
   },
+  "contract-extraction-v1": {
+    configuration: () => import("./steps/contract/config-step"),
+    "ingest-classify": () => import("./steps/contract/ingest-step"),
+    extract: () => import("./steps/contract/extract-step"),
+    review: () => import("./steps/contract/review-step"),
+    export: () => import("./steps/contract/export-step"),
+  },
 };
 
 export function getStepBodyLoader(
