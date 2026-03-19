@@ -50,6 +50,9 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    // Exclude static assets, images, and all /api/ routes.
+    // API routes handle their own auth (or are called from authenticated pages).
+    // Redirecting POST /api/* to /login returns HTML and breaks JSON clients.
+    "/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

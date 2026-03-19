@@ -57,8 +57,17 @@ export default function ContractIngestStep({
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Ingest failed" }));
-        onError({ code: "INGEST_ERROR", message: err.error ?? "Ingest failed" });
+        // Read as text first so we always get something useful, even if it's an HTML error page
+        const rawText = await res.text().catch(() => "");
+        let message = `Ingest failed (HTTP ${res.status})`;
+        try {
+          const err = JSON.parse(rawText);
+          message = err.error ?? message;
+        } catch {
+          // Server returned non-JSON (e.g. Vercel 413, middleware redirect HTML)
+          if (rawText) message = `${message}: ${rawText.slice(0, 300)}`;
+        }
+        onError({ code: "INGEST_ERROR", message });
         setRunning(false);
         return;
       }
