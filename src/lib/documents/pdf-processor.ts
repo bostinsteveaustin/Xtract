@@ -1,6 +1,7 @@
-// PDF text extraction using pdf-parse v2
+// PDF text extraction using pdf-parse v1
 
-import { PDFParse } from "pdf-parse";
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const pdfParse = require("pdf-parse") as any;
 import type { SourceMetadata } from "@/types/extraction";
 import { DocumentProcessingError } from "@/lib/utils/errors";
 
@@ -14,22 +15,17 @@ export async function processPDF(
   fileName: string
 ): Promise<ProcessedDocument> {
   try {
-    // pdf-parse v2 API: constructor takes { data: Buffer }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const parser = new PDFParse({ data: buffer }) as any;
-    const textResult = await parser.getText();
-    const info = await parser.getInfo();
-
-    const text = textResult.text;
+    const result = await pdfParse(buffer);
+    const text: string = result.text;
     const wordCount = text.split(/\s+/).filter(Boolean).length;
 
     return {
       text,
       metadata: {
-        pageCount: info?.numPages,
+        pageCount: result.numpages,
         wordCount,
-        title: info?.info?.Title || undefined,
-        author: info?.info?.Author || undefined,
+        title: result.info?.Title || undefined,
+        author: result.info?.Author || undefined,
       },
     };
   } catch (error) {
