@@ -5,12 +5,13 @@ import { FileDropZone, formatSize } from "../../interactions/file-drop-zone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Play, Download, FileText } from "lucide-react";
+import { Play, Download, FileText, Loader2 } from "lucide-react";
 import type { StepBodyProps } from "../../step-registry";
 import {
   STARTER_CTX_FILENAME,
   STARTER_CTX_CONTENT,
 } from "@/lib/contract/starter-ctx";
+import { createClient } from "@/lib/supabase/client";
 
 interface FileItem {
   file: File;
@@ -72,26 +73,15 @@ export default function ContractConfigStep({
     URL.revokeObjectURL(url);
   };
 
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const refTrimmed = engagementRef.trim();
-  const canRun = contractFiles.length > 0 && refTrimmed.length > 0;
+  const canRun = contractFiles.length > 0 && refTrimmed.length > 0 && !uploading;
 
   const handleRun = () => {
     if (!contractFiles[0] || !refTrimmed) return;
     const f = contractFiles[0].file;
-
-    const readContractFile = () =>
-      new Promise<{ base64Content: string; mimeType: string }>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const raw = reader.result as string;
-          const commaIdx = raw.indexOf(",");
-          resolve({
-            base64Content: raw.slice(commaIdx + 1),
-            mimeType: raw.slice(5, raw.indexOf(";")),
-          });
-        };
-        reader.readAsDataURL(f);
-      });
 
     const readCtxFile = (ctxFile: File) =>
       new Promise<string>((resolve) => {
@@ -100,24 +90,54 @@ export default function ContractConfigStep({
         reader.readAsText(ctxFile, "utf-8");
       });
 
+    const getMimeType = (file: File): string => {
+      if (file.type) return file.type;
+      if (file.name.endsWith(".pdf")) return "application/pdf";
+      if (file.name.endsWith(".md")) return "text/markdown";
+      return "text/plain";
+    };
+
     const run = async () => {
-      const { base64Content, mimeType } = await readContractFile();
+      setUploading(true);
+      setUploadError(null);
 
-      let ctxContent: string | undefined;
-      if (ctxFiles[0]) {
-        ctxContent = await readCtxFile(ctxFiles[0].file);
+      try {
+        // Upload contract file to Supabase Storage to avoid Vercel's 4.5MB
+        // function payload limit. The ingest route will download it server-side.
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        const userId = user?.id ?? "anon";
+        const safeName = f.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const storagePath = `${userId}/${Date.now()}-${safeName}`;
+        const mimeType = getMimeType(f);
+
+        const { error: uploadError } = await supabase.storage
+          .from("contract-uploads")
+          .upload(storagePath, f, { contentType: mimeType, upsert: false });
+
+        if (uploadError) {
+          throw new Error(`Upload failed: ${uploadError.message}`);
+        }
+
+        let ctxContent: string | undefined;
+        if (ctxFiles[0]) {
+          ctxContent = await readCtxFile(ctxFiles[0].file);
+        }
+
+        onComplete({
+          contractFiles,
+          ctxFiles,
+          storagePath,      // storage path — ingest route downloads from here
+          fileName: f.name,
+          mimeType,
+          engagementRef: refTrimmed,
+          clientName: clientName.trim(),
+          ctxContent,
+        });
+      } catch (e) {
+        setUploadError(e instanceof Error ? e.message : String(e));
+        setUploading(false);
       }
-
-      onComplete({
-        contractFiles,
-        ctxFiles,
-        fileContent: base64Content,
-        fileName: f.name,
-        mimeType,
-        engagementRef: refTrimmed,
-        clientName: clientName.trim(),
-        ctxContent,
-      });
     };
 
     run();
@@ -210,17 +230,32 @@ export default function ContractConfigStep({
         </div>
       </div>
 
+      {uploadError && (
+        <p className="text-xs text-destructive bg-destructive/5 border border-destructive/30 rounded px-3 py-2">
+          {uploadError}
+        </p>
+      )}
+
       <Button
         onClick={handleRun}
         disabled={!canRun}
         className="bg-[var(--pipeline-navy)] hover:bg-[var(--pipeline-navy)]/90"
       >
-        <Play className="h-4 w-4 mr-2" />
-        {!contractFiles.length
-          ? "Upload a contract to continue"
-          : !refTrimmed
-          ? "Enter an engagement reference to continue"
-          : "Start Extraction"}
+        {uploading ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Uploading...
+          </>
+        ) : (
+          <>
+            <Play className="h-4 w-4 mr-2" />
+            {!contractFiles.length
+              ? "Upload a contract to continue"
+              : !refTrimmed
+              ? "Enter an engagement reference to continue"
+              : "Start Extraction"}
+          </>
+        )}
       </Button>
     </div>
   );

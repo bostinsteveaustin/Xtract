@@ -1,8 +1,11 @@
 // POST /api/contract/ingest
 // Stage 2: Parse document, chunk by clause, classify parties + document type
+// File is downloaded from Supabase Storage (uploaded by client to avoid
+// Vercel's 4.5 MB function payload limit), then deleted after parsing.
 
 import { NextResponse } from "next/server";
 import { parseDocument } from "@/lib/contract/document-parser";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { generateText } from "ai";
 import { extractionModel } from "@/lib/ai/client";
 import type { LogEntry } from "@/types/pipeline";
@@ -66,28 +69,51 @@ Return ONLY valid JSON. No markdown.`,
 }
 
 export async function POST(request: Request) {
+  let storagePath: string | undefined;
+
   try {
     const body = await request.json() as {
-      fileContent: string;    // base64
+      storagePath: string;   // Supabase Storage path — file was uploaded by client
       fileName: string;
       mimeType: string;
       engagementRef?: string;
       clientName?: string;
     };
 
-    const { fileContent, fileName, mimeType } = body;
+    storagePath = body.storagePath;
+    const { fileName, mimeType } = body;
 
-    if (!fileContent || !fileName) {
-      return NextResponse.json({ error: "Missing fileContent or fileName" }, { status: 400 });
+    if (!storagePath || !fileName) {
+      return NextResponse.json({ error: "Missing storagePath or fileName" }, { status: 400 });
     }
 
     const log: LogEntry[] = [];
 
-    // 1. Parse document
-    const parsed = await parseDocument(fileContent, fileName, mimeType ?? "text/plain");
+    // 1. Download file from Supabase Storage
+    log.push({ timestamp: ts(), level: "info", message: "Downloading file from storage...", icon: "check" });
+    const supabase = createAdminClient();
+    const { data: blob, error: downloadError } = await supabase.storage
+      .from("contract-uploads")
+      .download(storagePath);
+
+    if (downloadError || !blob) {
+      throw new Error(`Storage download failed: ${downloadError?.message ?? "no data"}`);
+    }
+
+    // Convert blob → base64 for parseDocument
+    const arrayBuffer = await blob.arrayBuffer();
+    const fileBase64 = Buffer.from(arrayBuffer).toString("base64");
+
+    // 2. Parse document
+    const parsed = await parseDocument(fileBase64, fileName, mimeType ?? "text/plain");
     log.push(...(parsed.logEntries as LogEntry[]));
 
-    // 2. Classify document
+    // 3. Delete temp file from storage (fire-and-forget — don't block response)
+    supabase.storage.from("contract-uploads").remove([storagePath]).catch(() => {
+      console.warn("Failed to delete temp file from storage:", storagePath);
+    });
+
+    // 4. Classify document
     const classification = await classifyDocument(parsed.text, log);
 
     log.push({
@@ -129,6 +155,10 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("POST /api/contract/ingest error:", error);
     const msg = error instanceof Error ? error.message : String(error);
+    // Attempt cleanup on error so temp files don't accumulate
+    if (storagePath) {
+      createAdminClient().storage.from("contract-uploads").remove([storagePath]).catch(() => {});
+    }
     return NextResponse.json({ error: `Ingest failed: ${msg.slice(0, 200)}` }, { status: 500 });
   }
 }

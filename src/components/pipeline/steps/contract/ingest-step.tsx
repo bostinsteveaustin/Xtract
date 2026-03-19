@@ -37,13 +37,13 @@ export default function ContractIngestStep({
     onStart();
 
     const configData = allStepStates.configuration?.data;
-    const fileContent = configData?.fileContent as string | undefined;
+    const storagePath = configData?.storagePath as string | undefined;
     const fileName = configData?.fileName as string | undefined;
     const mimeType = configData?.mimeType as string | undefined;
     const engagementRef = configData?.engagementRef as string | undefined;
     const clientName = configData?.clientName as string | undefined;
 
-    if (!fileContent || !fileName) {
+    if (!storagePath || !fileName) {
       onError({ code: "NO_INPUT", message: "No contract document found from configuration step" });
       setRunning(false);
       return;
@@ -53,7 +53,7 @@ export default function ContractIngestStep({
       const res = await fetch("/api/contract/ingest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileContent, fileName, mimeType, engagementRef, clientName }),
+        body: JSON.stringify({ storagePath, fileName, mimeType, engagementRef, clientName }),
       });
 
       if (!res.ok) {
