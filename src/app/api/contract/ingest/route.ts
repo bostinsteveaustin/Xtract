@@ -113,6 +113,14 @@ export async function POST(request: Request) {
       console.warn("Failed to delete temp file from storage:", storagePath);
     });
 
+    // Validate we got usable text — scanned/image PDFs return near-empty text
+    if (parsed.wordCount < 150) {
+      const msg = fileName.toLowerCase().endsWith(".pdf")
+        ? `PDF contained only ${parsed.wordCount} words of extractable text. This PDF is likely scanned or image-based with no machine-readable text layer. Please export it as a searchable PDF (using Acrobat's "Recognise Text" / OCR feature), or convert it to a text file and upload that instead.`
+        : `Document contained only ${parsed.wordCount} words — too short to extract contract intelligence.`;
+      return NextResponse.json({ error: msg }, { status: 422 });
+    }
+
     // 4. Classify document
     const classification = await classifyDocument(parsed.text, log);
 
