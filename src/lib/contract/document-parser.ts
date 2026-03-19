@@ -6,8 +6,9 @@
 //   Pass A: pdf-parse v1 (fast, free, works on text-layer PDFs)
 //   Pass B: Claude PDF vision (fallback for scanned/image PDFs — no text layer)
 
-import { generateText } from "ai";
-import { anthropic } from "@/lib/ai/client";
+// AI SDK imports are done lazily inside claudePdfOcr() — only when the OCR
+// fallback is needed. Top-level imports of the Anthropic client caused a
+// Turbopack module-load error in the ingest serverless function.
 
 export interface ParsedDocument {
   text: string;
@@ -90,6 +91,10 @@ async function claudePdfOcr(
     message: "PDF appears to be image-based — using Claude vision OCR as fallback...",
     icon: "check",
   });
+
+  // Lazy-load AI SDK to avoid Turbopack module-init crash in ingest route
+  const { generateText } = await import("ai");
+  const { anthropic } = await import("@/lib/ai/client");
 
   // Convert base64 → Uint8Array for the AI SDK file part
   const pdfBytes = new Uint8Array(Buffer.from(fileContentBase64, "base64"));
