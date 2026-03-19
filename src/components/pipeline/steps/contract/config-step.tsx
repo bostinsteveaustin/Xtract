@@ -11,7 +11,16 @@ import {
   STARTER_CTX_FILENAME,
   STARTER_CTX_CONTENT,
 } from "@/lib/contract/starter-ctx";
-import { createClient } from "@/lib/supabase/client";
+// Supabase browser client — imported lazily inside handleRun to avoid SSR issues
+// (createBrowserClient accesses document.cookie which doesn't exist server-side)
+let _supabaseClient: ReturnType<typeof import("@/lib/supabase/client").createClient> | null = null;
+async function getSupabaseClient() {
+  if (!_supabaseClient) {
+    const { createClient } = await import("@/lib/supabase/client");
+    _supabaseClient = createClient();
+  }
+  return _supabaseClient;
+}
 
 interface FileItem {
   file: File;
@@ -104,7 +113,7 @@ export default function ContractConfigStep({
       try {
         // Upload contract file to Supabase Storage to avoid Vercel's 4.5MB
         // function payload limit. The ingest route will download it server-side.
-        const supabase = createClient();
+        const supabase = await getSupabaseClient();
         const { data: { user } } = await supabase.auth.getUser();
         const userId = user?.id ?? "anon";
         const safeName = f.name.replace(/[^a-zA-Z0-9._-]/g, "_");
