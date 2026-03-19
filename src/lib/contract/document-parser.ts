@@ -85,13 +85,49 @@ export async function parseDocument(
     // PDF: decode base64 → buffer → pdf-parse
     const buffer = Buffer.from(fileContentBase64, "base64");
 
+    // Polyfill browser globals that pdfjs-dist requires in Node.js / Vercel serverless
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const g = globalThis as any;
+    if (typeof g.DOMMatrix === "undefined") {
+      g.DOMMatrix = class DOMMatrix {
+        m11=1;m12=0;m13=0;m14=0;m21=0;m22=1;m23=0;m24=0;
+        m31=0;m32=0;m33=1;m34=0;m41=0;m42=0;m43=0;m44=1;
+        a=1;b=0;c=0;d=1;e=0;f=0;is2D=true;isIdentity=true;
+        static fromMatrix() { return new g.DOMMatrix(); }
+        static fromFloat32Array() { return new g.DOMMatrix(); }
+        static fromFloat64Array() { return new g.DOMMatrix(); }
+        multiply() { return this; } translate() { return this; }
+        scale() { return this; } rotate() { return this; }
+        inverse() { return this; } invertSelf() { return this; }
+        multiplySelf() { return this; } translateSelf() { return this; }
+        scaleSelf() { return this; } rotateSelf() { return this; }
+        skewX() { return this; } skewY() { return this; }
+        flipX() { return this; } flipY() { return this; }
+        transformPoint(p?: {x?:number;y?:number;z?:number;w?:number}) {
+          return { x: p?.x??0, y: p?.y??0, z: p?.z??0, w: p?.w??1 };
+        }
+        toFloat32Array() { return new Float32Array(16); }
+        toFloat64Array() { return new Float64Array(16); }
+        toString() { return "matrix(1, 0, 0, 1, 0, 0)"; }
+        toJSON() { return {}; }
+      };
+    }
+    if (typeof g.DOMPoint === "undefined") {
+      g.DOMPoint = class DOMPoint {
+        constructor(public x=0, public y=0, public z=0, public w=1) {}
+        static fromPoint(p?: {x?:number;y?:number;z?:number;w?:number}) {
+          return new g.DOMPoint(p?.x??0, p?.y??0, p?.z??0, p?.w??1);
+        }
+        matrixTransform() { return this; }
+        toJSON() { return {}; }
+      };
+    }
+
     try {
-      // pdf-parse v2 — class-based API
       // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
       const PDFParse = require("pdf-parse") as any;
       const pdf = await new PDFParse({ data: buffer });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      text = (pdf as any).text as string;
+      text = (pdf as { text: string }).text;
     } catch (e) {
       throw new Error(`PDF parsing failed: ${String(e)}`);
     }
