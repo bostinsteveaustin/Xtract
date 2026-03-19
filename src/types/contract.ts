@@ -104,6 +104,7 @@ export type FinancialTermType =
   | "late_payment"
   | "security_deposit"
   | "guarantee"
+  | "insurance_requirement"   // only used as guard — dedupe removes these before output
   | "other";
 
 export interface FinancialTerm {

@@ -42,6 +42,7 @@ export default function ContractExtractStep({
 
     const documentText = ingestData?.documentText as string | undefined;
     const engagementRef = configData?.engagementRef as string | undefined;
+    const ctxContent = configData?.ctxContent as string | undefined;
 
     if (!documentText) {
       onError({ code: "NO_INPUT", message: "No document text found from ingest step" });
@@ -53,7 +54,7 @@ export default function ContractExtractStep({
       const res = await fetch("/api/contract/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ documentText, engagementRef }),
+        body: JSON.stringify({ documentText, engagementRef, ctxContent }),
       });
 
       if (!res.ok) {

@@ -5,8 +5,12 @@ import { FileDropZone, formatSize } from "../../interactions/file-drop-zone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Play } from "lucide-react";
+import { Play, Download, FileText } from "lucide-react";
 import type { StepBodyProps } from "../../step-registry";
+import {
+  STARTER_CTX_FILENAME,
+  STARTER_CTX_CONTENT,
+} from "@/lib/contract/starter-ctx";
 
 interface FileItem {
   file: File;
@@ -22,6 +26,9 @@ export default function ContractConfigStep({
   const [contractFiles, setContractFiles] = useState<FileItem[]>(
     (stepState.data.contractFiles as FileItem[] | undefined) ?? []
   );
+  const [ctxFiles, setCtxFiles] = useState<FileItem[]>(
+    (stepState.data.ctxFiles as FileItem[] | undefined) ?? []
+  );
   const [engagementRef, setEngagementRef] = useState<string>(
     (stepState.data.engagementRef as string | undefined) ?? ""
   );
@@ -29,7 +36,7 @@ export default function ContractConfigStep({
     (stepState.data.clientName as string | undefined) ?? ""
   );
 
-  const handleFileSelect = useCallback(
+  const handleContractSelect = useCallback(
     (files: File[]) => {
       const items = files.map((f) => ({
         file: f,
@@ -42,42 +49,78 @@ export default function ContractConfigStep({
     [onUpdateData]
   );
 
-  const canRun = contractFiles.length > 0;
+  const handleCtxSelect = useCallback(
+    (files: File[]) => {
+      const items = files.map((f) => ({
+        file: f,
+        name: f.name,
+        size: formatSize(f.size),
+      }));
+      setCtxFiles(items);
+      onUpdateData({ ctxFiles: items });
+    },
+    [onUpdateData]
+  );
+
+  const handleDownloadStarterCtx = () => {
+    const blob = new Blob([STARTER_CTX_CONTENT], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = STARTER_CTX_FILENAME;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const refTrimmed = engagementRef.trim();
+  const canRun = contractFiles.length > 0 && refTrimmed.length > 0;
 
   const handleRun = () => {
-    if (!contractFiles[0]) return;
+    if (!contractFiles[0] || !refTrimmed) return;
     const f = contractFiles[0].file;
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      // Send as base64 regardless of type — server handles parsing
-      const raw = reader.result;
-      let base64Content: string;
-      let mimeType: string;
+    const readContractFile = () =>
+      new Promise<{ base64Content: string; mimeType: string }>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const raw = reader.result as string;
+          const commaIdx = raw.indexOf(",");
+          resolve({
+            base64Content: raw.slice(commaIdx + 1),
+            mimeType: raw.slice(5, raw.indexOf(";")),
+          });
+        };
+        reader.readAsDataURL(f);
+      });
 
-      if (typeof raw === "string" && raw.startsWith("data:")) {
-        // readAsDataURL result
-        const commaIdx = raw.indexOf(",");
-        base64Content = raw.slice(commaIdx + 1);
-        mimeType = raw.slice(5, raw.indexOf(";"));
-      } else {
-        // Fallback — shouldn't happen
-        base64Content = btoa(raw as string);
-        mimeType = "text/plain";
+    const readCtxFile = (ctxFile: File) =>
+      new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsText(ctxFile, "utf-8");
+      });
+
+    const run = async () => {
+      const { base64Content, mimeType } = await readContractFile();
+
+      let ctxContent: string | undefined;
+      if (ctxFiles[0]) {
+        ctxContent = await readCtxFile(ctxFiles[0].file);
       }
 
       onComplete({
         contractFiles,
+        ctxFiles,
         fileContent: base64Content,
         fileName: f.name,
         mimeType,
-        engagementRef: engagementRef.trim() || "ENG",
+        engagementRef: refTrimmed,
         clientName: clientName.trim(),
+        ctxContent,
       });
     };
 
-    // Always read as DataURL so we get base64 for binary files (PDF)
-    reader.readAsDataURL(f);
+    run();
   };
 
   return (
@@ -89,18 +132,52 @@ export default function ContractConfigStep({
         accept=".txt,.md,.pdf"
         required
         files={contractFiles}
-        onFilesSelected={handleFileSelect}
+        onFilesSelected={handleContractSelect}
         onRemove={() => {
           setContractFiles([]);
           onUpdateData({ contractFiles: [] });
         }}
       />
 
+      {/* CTX file upload — optional */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-xs uppercase tracking-[0.06em] text-muted-foreground font-medium">
+            Extraction Context (CTX) — Optional
+          </Label>
+          <button
+            type="button"
+            onClick={handleDownloadStarterCtx}
+            className="flex items-center gap-1.5 text-xs text-[var(--pipeline-navy)] hover:underline"
+          >
+            <Download className="h-3 w-3" />
+            Download starter CTX
+          </button>
+        </div>
+        <FileDropZone
+          id="ctx-file"
+          label="CTX File"
+          accept=".ctx,.txt,.md"
+          files={ctxFiles}
+          onFilesSelected={handleCtxSelect}
+          onRemove={() => {
+            setCtxFiles([]);
+            onUpdateData({ ctxFiles: [] });
+          }}
+        />
+        {ctxFiles.length === 0 && (
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+            <FileText className="h-3 w-3 shrink-0" />
+            No CTX uploaded — extraction will use built-in standard rules. Download the starter CTX above to customise per client or sector.
+          </p>
+        )}
+      </div>
+
       {/* Engagement details */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="engagement-ref" className="text-xs uppercase tracking-[0.06em] text-muted-foreground font-medium">
-            Engagement Reference
+            Engagement Reference <span className="text-destructive">*</span>
           </Label>
           <Input
             id="engagement-ref"
@@ -112,6 +189,9 @@ export default function ContractConfigStep({
             placeholder="e.g. ACME-MSA-2026"
             className="text-sm"
           />
+          {engagementRef.trim().length === 0 && (
+            <p className="text-xs text-destructive">Required before extraction can run</p>
+          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="client-name" className="text-xs uppercase tracking-[0.06em] text-muted-foreground font-medium">
@@ -136,7 +216,11 @@ export default function ContractConfigStep({
         className="bg-[var(--pipeline-navy)] hover:bg-[var(--pipeline-navy)]/90"
       >
         <Play className="h-4 w-4 mr-2" />
-        {canRun ? "Start Extraction" : "Upload a contract to continue"}
+        {!contractFiles.length
+          ? "Upload a contract to continue"
+          : !refTrimmed
+          ? "Enter an engagement reference to continue"
+          : "Start Extraction"}
       </Button>
     </div>
   );

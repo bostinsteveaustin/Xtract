@@ -11,15 +11,16 @@ export async function POST(request: Request) {
     const body = await request.json() as {
       documentText: string;
       engagementRef?: string;
+      ctxContent?: string;
     };
 
-    const { documentText, engagementRef } = body;
+    const { documentText, engagementRef, ctxContent } = body;
 
     if (!documentText) {
       return NextResponse.json({ error: "Missing documentText" }, { status: 400 });
     }
 
-    const output = await extractContract(documentText, engagementRef ?? "ENG");
+    const output = await extractContract(documentText, engagementRef ?? "ENG", ctxContent);
 
     return NextResponse.json({
       result: output.result,
