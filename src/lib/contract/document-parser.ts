@@ -92,41 +92,62 @@ async function claudePdfOcr(
     icon: "check",
   });
 
-  // Lazy-load AI SDK to avoid Turbopack module-init crash in ingest route
-  const { generateText } = await import("ai");
-  const { anthropic } = await import("@/lib/ai/client");
+  // Call Anthropic API directly — the AI SDK v3 doesn't support the
+  // `type: "document"` content block needed for PDF vision. Raw fetch
+  // gives us full control over the message schema.
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
 
-  // Convert base64 → Uint8Array for the AI SDK file part
-  const pdfBytes = new Uint8Array(Buffer.from(fileContentBase64, "base64"));
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-beta": "pdfs-2024-09-25",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 8000,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "document",
+              source: {
+                type: "base64",
+                media_type: "application/pdf",
+                data: fileContentBase64,
+              },
+            },
+            {
+              type: "text",
+              text: "Extract ALL text from this PDF document. This is a legal/commercial agreement. Return the raw text content only, preserving paragraphs, clause numbers, headings, and section structure. Do not summarise, interpret, or add any commentary — return only the verbatim text as it appears in the document, in reading order.",
+            },
+          ],
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => "");
+    throw new Error(`Anthropic OCR API error ${response.status}: ${errText.slice(0, 200)}`);
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const filePart: any = { type: "file", data: pdfBytes, mimeType: "application/pdf" };
-
-  const result = await generateText({
-    model: anthropic("claude-sonnet-4-20250514"),
-    messages: [
-      {
-        role: "user",
-        content: [
-          filePart,
-          {
-            type: "text",
-            text: `Extract ALL text from this PDF document. This is a legal/commercial agreement. Return the raw text content only, preserving paragraphs, clause numbers, headings, and section structure. Do not summarise, interpret, or add any commentary — return only the verbatim text as it appears in the document, in reading order.`,
-          },
-        ],
-      },
-    ],
-    maxOutputTokens: 8000,
-  });
+  const json = await response.json() as any;
+  const extractedText: string = json?.content?.[0]?.text ?? "";
 
   log.push({
     timestamp: ts(),
     level: "info",
-    message: `Claude OCR complete — ${result.text.split(/\s+/).filter(Boolean).length.toLocaleString()} words extracted`,
+    message: `Claude OCR complete — ${extractedText.split(/\s+/).filter(Boolean).length.toLocaleString()} words extracted`,
     icon: "check",
   });
 
-  return result.text;
+  return extractedText;
 }
 
 export async function parseDocument(
