@@ -43,7 +43,7 @@ Core extraction rules:
 - For monetary amounts, extract the numeric value separately from the currency code
 - Every object MUST have a sourceClause reference
 - Insurance requirements are obligations, NOT financial terms — do not create FinancialTerm objects for insurance minimums
-- When an obligation applies to both parties, create two separate objects, one per party`;
+- When an obligation applies to both parties, create ONE object with obligatedParty set to the primary obligor and note "Both parties" in the description — do NOT create duplicate objects for the same clause`;
 
   if (!ctxContent?.trim()) return base;
 
@@ -252,6 +252,20 @@ function dedupeInsurance(financialTerms: FinancialTerm[]): FinancialTerm[] {
   return financialTerms.filter((f) => f.termType !== "insurance_requirement");
 }
 
+/**
+ * Deduplicate obligations by (name, sourceClause) — keeps the first occurrence.
+ * Prevents Claude returning the same clause twice when it applies to both parties.
+ */
+function dedupeObligations(obligations: ContractObligation[]): ContractObligation[] {
+  const seen = new Set<string>();
+  return obligations.filter((o) => {
+    const key = `${o.name.toLowerCase().trim()}|${o.sourceClause?.toLowerCase().trim() ?? ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function countConfidence(items: { confidence: string }[]) {
   return {
     high: items.filter((i) => i.confidence === "high").length,
@@ -388,6 +402,18 @@ export async function extractContract(
     log.push({ timestamp: ts(), level: "info", message: "Dispute resolution recovered from document tail", icon: "check" });
   }
 
+  // ── Dedup obligations (same name + clause = same obligation) ─────────────
+  const rawObligations = parsed.obligations ?? [];
+  const obligations = dedupeObligations(rawObligations);
+  if (rawObligations.length !== obligations.length) {
+    log.push({
+      timestamp: ts(),
+      level: "info",
+      message: `Removed ${rawObligations.length - obligations.length} duplicate obligation(s)`,
+      icon: "check",
+    });
+  }
+
   // ── Dedup insurance from financial terms ──────────────────────────────────
   const rawFinancialTerms = parsed.financialTerms ?? [];
   const financialTerms = dedupeInsurance(rawFinancialTerms);
@@ -405,7 +431,7 @@ export async function extractContract(
     engagementRef: ref,
     parties: parsed.parties ?? [],
     agreement,
-    obligations: parsed.obligations ?? [],
+    obligations,
     financialTerms,
     serviceLevels: parsed.serviceLevels ?? [],
     liabilityProvisions: parsed.liabilityProvisions ?? [],
