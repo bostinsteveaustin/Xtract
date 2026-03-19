@@ -186,12 +186,16 @@ export default function ContractReviewStep({
         <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-1">
           <p className="font-medium text-[11px] uppercase tracking-[0.06em] text-muted-foreground mb-2">Agreement</p>
           <p><span className="font-medium">Title:</span> {extractionResult.agreement.title}</p>
-          <p><span className="font-medium">Type:</span> {extractionResult.agreement.agreementType.replace("_", " ").toUpperCase()}</p>
-          <p><span className="font-medium">Effective:</span> {extractionResult.agreement.effectiveDate}</p>
+          <p><span className="font-medium">Type:</span> {(extractionResult.agreement.agreementType ?? "unknown").replace(/_/g, " ").toUpperCase()}</p>
+          {extractionResult.agreement.effectiveDate && (
+            <p><span className="font-medium">Effective:</span> {extractionResult.agreement.effectiveDate}</p>
+          )}
           {extractionResult.agreement.expiryDate && (
             <p><span className="font-medium">Expiry:</span> {extractionResult.agreement.expiryDate}</p>
           )}
-          <p><span className="font-medium">Governing Law:</span> {extractionResult.agreement.governingLaw}</p>
+          {extractionResult.agreement.governingLaw && (
+            <p><span className="font-medium">Governing Law:</span> {extractionResult.agreement.governingLaw}</p>
+          )}
         </div>
       )}
 
