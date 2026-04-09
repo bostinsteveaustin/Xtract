@@ -54,6 +54,25 @@ async function cortxFetch(path: string, init?: RequestInit) {
 }
 
 /**
+ * List contexts from the authenticated Cortx account (owned + shared).
+ * These are the user's own contexts, not the public marketplace.
+ */
+export async function listMyContexts(
+  search?: string,
+  limit = 50
+): Promise<CortxContextSummary[]> {
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  params.set("limit", String(limit));
+  params.set("status", "published");
+
+  const data = await cortxFetch(`/contexts?${params.toString()}`);
+  // API may return { contexts: [...] } or an array directly
+  const contexts = Array.isArray(data) ? data : (data.contexts ?? data.results ?? []);
+  return contexts;
+}
+
+/**
  * Browse / search published contexts on the Cortx marketplace.
  */
 export async function browseMarketplace(

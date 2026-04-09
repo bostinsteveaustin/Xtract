@@ -43,6 +43,21 @@ interface CTXConfig {
   content: unknown;
 }
 
+interface CortxContext {
+  id: string;
+  title: string;
+  description: string;
+  contextType: string;
+}
+
+/** Unified item in the CTX dropdown */
+interface CTXOption {
+  id: string;       // prefixed: "local:{uuid}" or "cortx:{uuid}"
+  label: string;
+  source: "local" | "cortx";
+  content?: unknown; // pre-loaded for local configs
+}
+
 export default function ContractConfigStep({
   stepState,
   onUpdateData,
@@ -66,7 +81,8 @@ export default function ContractConfigStep({
   );
 
   // ─── CTX selector state ─────────────────────────────────────────────
-  const [ctxConfigs, setCtxConfigs] = useState<CTXConfig[]>([]);
+  const [ctxOptions, setCtxOptions] = useState<CTXOption[]>([]);
+  const [localConfigs, setLocalConfigs] = useState<CTXConfig[]>([]);
   const [ctxLoading, setCtxLoading] = useState(true);
   const [selectedCtxId, setSelectedCtxId] = useState<string>(
     (stepState.data.selectedCtxId as string | undefined) ?? "__none__"
@@ -75,22 +91,53 @@ export default function ContractConfigStep({
     (stepState.data.ctxFiles as FileItem[] | undefined)?.length ? "upload" : "select"
   );
 
-  // Load workspace CTX configs on mount
+  // Load workspace CTX configs + Cortx account contexts on mount
   useEffect(() => {
-    async function loadConfigs() {
+    async function loadAll() {
+      const options: CTXOption[] = [];
+
+      // 1. Local workspace configs
       try {
         const res = await fetch("/api/ctx");
         if (res.ok) {
           const data = await res.json();
-          setCtxConfigs(data.configs ?? []);
+          const configs: CTXConfig[] = data.configs ?? [];
+          setLocalConfigs(configs);
+          for (const cfg of configs) {
+            options.push({
+              id: `local:${cfg.id}`,
+              label: `${cfg.name} (v${cfg.version})`,
+              source: "local",
+              content: cfg.content,
+            });
+          }
         }
       } catch {
         // silent
-      } finally {
-        setCtxLoading(false);
       }
+
+      // 2. Cortx account contexts
+      try {
+        const res = await fetch("/api/cortx/contexts");
+        if (res.ok) {
+          const data = await res.json();
+          const contexts: CortxContext[] = data.contexts ?? [];
+          for (const ctx of contexts) {
+            options.push({
+              id: `cortx:${ctx.id}`,
+              label: ctx.title,
+              source: "cortx",
+            });
+          }
+        }
+      } catch {
+        // silent — Cortx may be unavailable
+      }
+
+      setCtxOptions(options);
+      setCtxLoading(false);
     }
-    loadConfigs();
+    loadAll();
   }, []);
 
   const handleContractSelect = useCallback(
@@ -179,9 +226,20 @@ export default function ContractConfigStep({
         // Resolve CTX content from dropdown selection or manual upload
         let ctxContent: string | undefined;
         if (ctxMode === "select" && selectedCtxId && selectedCtxId !== "__none__") {
-          const config = ctxConfigs.find((c) => c.id === selectedCtxId);
-          if (config) {
-            ctxContent = JSON.stringify(config.content);
+          if (selectedCtxId.startsWith("local:")) {
+            // Local workspace config — content already loaded
+            const option = ctxOptions.find((o) => o.id === selectedCtxId);
+            if (option?.content) {
+              ctxContent = JSON.stringify(option.content);
+            }
+          } else if (selectedCtxId.startsWith("cortx:")) {
+            // Cortx context — fetch full content on the fly
+            const cortxId = selectedCtxId.replace("cortx:", "");
+            const res = await fetch(`/api/cortx/${cortxId}`);
+            if (res.ok) {
+              const data = await res.json();
+              ctxContent = JSON.stringify(data.context);
+            }
           }
         } else if (ctxMode === "upload" && ctxFiles[0]) {
           ctxContent = await readCtxFile(ctxFiles[0].file);
@@ -271,24 +329,42 @@ export default function ContractConfigStep({
                 <SelectItem value="__none__">
                   No CTX — use built-in standard rules
                 </SelectItem>
-                {ctxConfigs.map((cfg) => (
-                  <SelectItem key={cfg.id} value={cfg.id}>
-                    {cfg.name}
-                    <span className="text-muted-foreground ml-1 text-xs">
-                      v{cfg.version}
-                    </span>
-                  </SelectItem>
-                ))}
+                {/* Cortx account contexts */}
+                {ctxOptions.filter((o) => o.source === "cortx").length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-[10px] uppercase tracking-widest text-muted-foreground font-semibold border-t mt-1 pt-2">
+                      Cortx
+                    </div>
+                    {ctxOptions
+                      .filter((o) => o.source === "cortx")
+                      .map((o) => (
+                        <SelectItem key={o.id} value={o.id}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                  </>
+                )}
+                {/* Local workspace configs */}
+                {ctxOptions.filter((o) => o.source === "local").length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-[10px] uppercase tracking-widest text-muted-foreground font-semibold border-t mt-1 pt-2">
+                      Workspace Library
+                    </div>
+                    {ctxOptions
+                      .filter((o) => o.source === "local")
+                      .map((o) => (
+                        <SelectItem key={o.id} value={o.id}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
             {selectedCtxId === "__none__" && (
               <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                 <FileText className="h-3 w-3 shrink-0" />
                 No CTX selected — extraction will use built-in standard rules.
-                Import CTX files from the{" "}
-                <a href="/marketplace" className="text-[var(--pipeline-navy)] hover:underline">
-                  Marketplace
-                </a>.
               </p>
             )}
           </div>
