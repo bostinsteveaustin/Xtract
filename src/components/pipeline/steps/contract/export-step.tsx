@@ -53,11 +53,16 @@ export default function ContractExportStep({
       return;
     }
 
+    // Get output name from config step for file naming
+    const outputName = (allStepStates.configuration?.data?.outputName as string) ||
+      (allStepStates.configuration?.data?.engagementRef as string) ||
+      "";
+
     try {
       const res = await fetch("/api/contract/export", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ result: extractionResult }),
+        body: JSON.stringify({ result: extractionResult, outputName }),
       });
 
       if (!res.ok) {
