@@ -3,13 +3,22 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAuth, verifyWorkflowOwnership } from "@/lib/api/auth";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const { id } = await params;
+
+    if (!(await verifyWorkflowOwnership(id, auth.workspaceId))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     const body = await request.json();
     const { name } = body as { name?: string };
 
@@ -51,7 +60,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const { id } = await params;
+
+    if (!(await verifyWorkflowOwnership(id, auth.workspaceId))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     const supabase = createAdminClient();
     const { error } = await supabase
       .from("workflows")

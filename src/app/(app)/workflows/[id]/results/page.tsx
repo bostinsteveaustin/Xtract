@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ResultsTable } from "@/components/workflow/results-table";
+import { ResultsSplitPane } from "@/components/workflow/results-split-pane";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import type { CTXFile } from "@/types/ctx";
 
 interface ResultsPageProps {
   params: Promise<{ id: string }>;
@@ -70,6 +71,38 @@ export default async function ResultsPage({ params, searchParams }: ResultsPageP
     .eq("workflow_run_id", matchedRun.id)
     .order("created_at", { ascending: true });
 
+  // Load CTX config to get the objectSpec (column definitions for XLSX preview)
+  let attributeSpec: { name: string; type: string }[] = [];
+  if (matchedRun.ctx_configuration_id) {
+    const { data: ctxConfig } = await admin
+      .from("ctx_configurations")
+      .select("content")
+      .eq("id", matchedRun.ctx_configuration_id)
+      .single();
+
+    if (ctxConfig?.content) {
+      const ctxFile = ctxConfig.content as unknown as CTXFile;
+      const objectTypes = ctxFile?.sections?.objects?.objectTypes;
+      if (objectTypes && objectTypes.length > 0) {
+        attributeSpec = objectTypes[0].attributes.map((a) => ({
+          name: a.name,
+          type: a.type,
+        }));
+      }
+    }
+  }
+
+  // Fallback: if no objectSpec, derive columns from the first object's attributes
+  if (attributeSpec.length === 0 && objects && objects.length > 0) {
+    const firstAttrs = objects[0].attributes as Record<string, unknown> | null;
+    if (firstAttrs) {
+      attributeSpec = Object.keys(firstAttrs).map((key) => ({
+        name: key,
+        type: "text",
+      }));
+    }
+  }
+
   const realObjects = objects ?? [];
   const rels = relationships ?? [];
 
@@ -106,7 +139,7 @@ export default async function ResultsPage({ params, searchParams }: ResultsPageP
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/workflows">
@@ -124,10 +157,15 @@ export default async function ResultsPage({ params, searchParams }: ResultsPageP
         </div>
       </div>
 
-      <ResultsTable
+      <ResultsSplitPane
         objects={realObjects as any}
         relationships={rels as any}
         summary={summary}
+        attributeSpec={attributeSpec}
+        metadata={{
+          extractionId: matchedRun.id.slice(0, 8),
+          startedAt: matchedRun.started_at ?? undefined,
+        }}
       />
     </div>
   );

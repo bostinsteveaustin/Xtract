@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PanelLeftClose, PanelLeftOpen, User } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, User, Settings, Store } from "lucide-react";
 import { SidebarWorkflowItem } from "./sidebar-workflow-item";
 import { CreateWorkflowDialog } from "./create-workflow-dialog";
 import { cn } from "@/lib/utils";
@@ -77,6 +77,31 @@ export function AppSidebar({ user }: AppSidebarProps) {
         <CreateWorkflowDialog />
       </div>
 
+      {/* Marketplace link */}
+      <div className="px-2 pb-1 flex-shrink-0">
+        {isCollapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => router.push("/marketplace")}
+                className="w-10 h-10 mx-auto flex items-center justify-center rounded-md hover:bg-muted transition-colors text-muted-foreground"
+              >
+                <Store className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Cortx Marketplace</TooltipContent>
+          </Tooltip>
+        ) : (
+          <button
+            onClick={() => router.push("/marketplace")}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm text-muted-foreground"
+          >
+            <Store className="h-4 w-4" />
+            <span>Marketplace</span>
+          </button>
+        )}
+      </div>
+
       {/* Pipeline list */}
       <ScrollArea className="flex-1 px-2">
         <div className="space-y-1 py-1">
@@ -105,9 +130,30 @@ export function AppSidebar({ user }: AppSidebarProps) {
         </div>
       </ScrollArea>
 
-      {/* Bottom: profile */}
+      {/* Bottom: settings + profile */}
       <Separator />
-      <div className="p-2 flex-shrink-0">
+      <div className="p-2 flex-shrink-0 space-y-1">
+        {isCollapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => router.push("/settings")}
+                className="w-10 h-10 mx-auto flex items-center justify-center rounded-md hover:bg-muted transition-colors text-muted-foreground"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Workspace settings</TooltipContent>
+          </Tooltip>
+        ) : (
+          <button
+            onClick={() => router.push("/settings")}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-muted transition-colors text-sm text-muted-foreground"
+          >
+            <Settings className="h-4 w-4" />
+            <span>Settings</span>
+          </button>
+        )}
         {isCollapsed ? (
           <Tooltip>
             <TooltipTrigger asChild>

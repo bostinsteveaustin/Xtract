@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { buildIcmlJson, buildXlsx } from "@/lib/contract/exporter";
 import type { ContractExtractionResult } from "@/types/contract";
 import { nanoid } from "nanoid";
+import { requireAuth } from "@/lib/api/auth";
 
 export const maxDuration = 120;
 
@@ -15,6 +16,9 @@ function formatSize(bytes: number): string {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json() as {
       result: ContractExtractionResult;
