@@ -300,8 +300,10 @@ function RunsSection({ workflowId, onNewRun }: { workflowId: string; onNewRun: (
   }
 
   // Group by pipeline_type (§5.6 — visual seed for Model A)
+  // Null pipeline_type groups under a sentinel; label always renders as human-readable text
+  const UNCATEGORISED_KEY = "__uncategorised__";
   const grouped = runs.reduce<Record<string, WorkflowRun[]>>((acc, run) => {
-    const key = run.pipeline_type ?? "__unknown__";
+    const key = run.pipeline_type ?? UNCATEGORISED_KEY;
     if (!acc[key]) acc[key] = [];
     acc[key].push(run);
     return acc;
@@ -311,7 +313,8 @@ function RunsSection({ workflowId, onNewRun }: { workflowId: string; onNewRun: (
     <div>
       {Object.entries(grouped).map(([pipelineKey, groupRuns]) => {
         const pipelineDef = PIPELINE_REGISTRY.find((p) => p.key === pipelineKey);
-        const groupLabel = pipelineDef?.label ?? pipelineKey;
+        // Never render a raw sentinel — always show a human-readable label
+        const groupLabel = pipelineDef?.label ?? "Uncategorised";
 
         return (
           <div key={pipelineKey}>
@@ -352,21 +355,18 @@ function RunsSection({ workflowId, onNewRun }: { workflowId: string; onNewRun: (
                   )}
                 </div>
 
-                {run.completed_at && (
-                  <span style={{ fontSize: "0.78rem", color: "var(--muted-fg)", flexShrink: 0 }}>
-                    {formatDate(run.completed_at)}
-                  </span>
-                )}
-
                 {run.status === "completed" && (
                   <button
                     onClick={() => router.push(`/workflows/${workflowId}/results?runId=${run.id}`)}
                     style={{
                       background: "none", border: "none", cursor: "pointer",
-                      color: "var(--coral)", fontSize: "0.8rem", fontWeight: 500,
+                      color: "var(--muted-fg)", fontSize: "0.8rem", fontWeight: 500,
                       display: "flex", alignItems: "center", gap: "0.25rem",
                       padding: "0.2rem 0", flexShrink: 0,
+                      transition: "color 0.12s",
                     }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--foreground)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--muted-fg)"; }}
                   >
                     View results
                     <ArrowRight style={{ width: "0.8rem", height: "0.8rem" }} />

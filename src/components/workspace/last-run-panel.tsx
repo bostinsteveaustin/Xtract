@@ -245,15 +245,19 @@ export function LastRunPanel({ workflowId }: LastRunPanelProps) {
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
                   padding: "0.5rem 0.75rem", borderRadius: "6px",
-                  background: "var(--coral-soft)", color: "var(--coral)",
+                  background: "transparent",
+                  border: "1px solid var(--border)",
+                  color: "var(--foreground)",
                   fontSize: "0.8rem", fontWeight: 500,
-                  textDecoration: "none", transition: "background 0.1s",
+                  textDecoration: "none", transition: "background 0.1s, border-color 0.1s",
                 }}
                 onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = `rgba(251,57,112,0.14)`;
+                  (e.currentTarget as HTMLElement).style.background = "var(--muted)";
+                  (e.currentTarget as HTMLElement).style.borderColor = "var(--muted-fg)";
                 }}
                 onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = "var(--coral-soft)";
+                  (e.currentTarget as HTMLElement).style.background = "transparent";
+                  (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
                 }}
               >
                 View full results
