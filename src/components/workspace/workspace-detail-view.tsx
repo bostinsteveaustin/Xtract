@@ -719,16 +719,16 @@ function ContextSection({
 
           {/* Mode toggle — mutually exclusive */}
           <div style={{
-            display: "flex", gap: "0.375rem", width: "100%",
+            display: "flex", gap: "0.375rem",
             background: "var(--muted)", borderRadius: "8px", padding: "0.25rem",
-            boxSizing: "border-box",
+            minWidth: 0,
           }}>
             {(["cortx", "upload"] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
                 style={{
-                  flex: 1, padding: "0.4rem 0", borderRadius: "6px",
+                  flex: 1, minWidth: 0, padding: "0.4rem 0", borderRadius: "6px",
                   border: "none", cursor: "pointer",
                   fontSize: "0.82rem", fontWeight: 500,
                   background: mode === m ? "var(--paper)" : "transparent",
@@ -744,7 +744,7 @@ function ContextSection({
 
           {/* ── Cortx mode ── */}
           {mode === "cortx" && (
-            <div style={{ minHeight: "200px" }}>
+            <div style={{ minHeight: "200px", minWidth: 0, overflow: "hidden" }}>
               {cortxLoading ? (
                 <div style={{ display: "flex", justifyContent: "center", paddingTop: "3rem" }}>
                   <Loader2 className="animate-spin h-5 w-5" style={{ color: "var(--muted-fg)" }} />
@@ -764,26 +764,31 @@ function ContextSection({
                   </p>
                 </div>
               ) : (
-                <div className="space-y-1.5" style={{ maxHeight: "260px", overflowY: "auto" }}>
+                <div className="space-y-1.5" style={{ maxHeight: "260px", overflowX: "hidden", overflowY: "auto" }}>
                   {cortxContexts.map((ctx) => (
                     <button
                       key={ctx.id}
                       onClick={() => setSelectedCortxId(ctx.id)}
                       style={{
-                        width: "100%", textAlign: "left",
+                        width: "100%", minWidth: 0, textAlign: "left",
                         padding: "0.625rem 0.875rem", borderRadius: "8px",
                         border: `1.5px solid ${selectedCortxId === ctx.id ? "var(--coral)" : "var(--border)"}`,
                         background: selectedCortxId === ctx.id ? "var(--coral-soft)" : "var(--paper)",
                         cursor: "pointer", transition: "border-color 0.12s",
+                        boxSizing: "border-box",
                       }}
                     >
-                      <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground)" }}>
+                      <div style={{
+                        fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground)",
+                        overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis",
+                      }}>
                         {ctx.title}
                       </div>
                       {ctx.description && (
                         <div style={{
                           fontSize: "0.78rem", color: "var(--muted-fg)", marginTop: "0.1rem",
-                          overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis",
+                          overflow: "hidden", display: "-webkit-box",
+                          WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
                         }}>
                           {ctx.description}
                         </div>
