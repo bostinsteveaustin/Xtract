@@ -100,8 +100,8 @@
   --sidebar-accent-foreground:    #FB3970;
   --sidebar-ring:                 rgba(251, 57, 112, 0.35);
 
-  /* ── PIPELINE TOKENS (kept for existing pipeline components) ── */
-  --pipeline-navy:        #344654;   /* retained — Phase 5 will replace with coral */
+  /* ── PIPELINE TOKENS ── */
+  --pipeline-navy:        #FB3970;   /* remapped to coral in Phase 5 */
   --pipeline-pink:        #FB3970;   /* = coral */
   --pipeline-surface:     #F3EEE2;   /* updated to BridgingX muted */
   --pipeline-connector:   rgba(26, 35, 50, 0.08);

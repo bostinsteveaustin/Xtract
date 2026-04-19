@@ -64,7 +64,7 @@ export function PipelineBody({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto min-w-0">
       {/* Pipeline header with editable name */}
       <div className="border-b px-4 py-3">
         <div className="max-w-[760px] mx-auto flex items-center gap-3">
@@ -137,7 +137,7 @@ export function PipelineBody({
 
       {/* Metadata bar */}
       {metadata && (
-        <div className="bg-[var(--pipeline-surface)] border-b px-4 py-2">
+        <div style={{ background: "var(--muted)", borderBottom: "1px solid var(--border)" }} className="px-4 py-2">
           <div className="max-w-[760px] mx-auto flex items-center justify-between text-[13px] text-muted-foreground">
             <div className="flex items-center gap-4">
               <span className="font-medium text-foreground">
@@ -150,8 +150,8 @@ export function PipelineBody({
                 <span className="font-mono text-xs">{metadata.runId}</span>
               )}
               {totalTokenUsage && totalTokenUsage.totalTokens > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-background border px-2 py-0.5 text-xs font-mono">
-                  <span className="text-[var(--pipeline-navy)] font-medium">
+                <span className="inline-flex items-center gap-1 rounded-full bg-paper border px-2 py-0.5 text-xs font-mono">
+                  <span style={{ color: "var(--coral)", fontWeight: 500 }}>
                     {formatTokens(totalTokenUsage.totalTokens)}
                   </span>
                   <span>tokens</span>
@@ -166,7 +166,7 @@ export function PipelineBody({
                 onClick={() => onModeChange("guided")}
                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                   mode === "guided"
-                    ? "bg-[var(--pipeline-navy)] text-white"
+                    ? "bg-[var(--coral)] text-white"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
@@ -177,7 +177,7 @@ export function PipelineBody({
                 onClick={() => onModeChange("auto")}
                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
                   mode === "auto"
-                    ? "bg-[var(--pipeline-navy)] text-white"
+                    ? "bg-[var(--coral)] text-white"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >

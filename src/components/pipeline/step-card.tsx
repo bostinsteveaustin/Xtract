@@ -37,16 +37,16 @@ const statusConfig: Record<
     badgeClass: "text-muted-foreground/50",
   },
   active: {
-    borderClass: "border-[var(--pipeline-navy)]",
-    circleClass: "bg-[var(--pipeline-navy)] text-white",
+    borderClass: "border-[var(--coral)]",
+    circleClass: "bg-[var(--coral)] text-white",
     badgeLabel: "Active",
-    badgeClass: "text-[var(--pipeline-navy)]",
+    badgeClass: "text-[var(--coral)]",
   },
   running: {
-    borderClass: "border-[var(--pipeline-navy)]",
-    circleClass: "bg-[var(--pipeline-navy)] text-white",
+    borderClass: "border-[var(--coral)]",
+    circleClass: "bg-[var(--coral)] text-white",
     badgeLabel: "Running",
-    badgeClass: "text-[var(--pipeline-navy)]",
+    badgeClass: "text-[var(--coral)]",
   },
   complete: {
     borderClass: "border-[var(--pipeline-pink)]",
@@ -127,14 +127,23 @@ export function StepCard({
           <p className="text-[11px] uppercase tracking-[0.06em] text-muted-foreground">
             {label}
           </p>
-          <p className="text-sm font-medium text-[var(--pipeline-navy)] truncate">
+          <p className="text-sm font-medium text-[var(--coral)] truncate">
             {title}
           </p>
         </div>
 
         {/* Token usage badge */}
         {tokenUsage && tokenUsage.totalTokens > 0 && (
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-mono text-slate-600">
+          <span
+            style={{
+              borderRadius: "999px",
+              background: "var(--muted)",
+              padding: "0.125rem 0.5rem",
+              fontSize: "0.72rem",
+              fontFamily: "var(--font-mono)",
+              color: "var(--muted-fg)",
+            }}
+          >
             {formatTokens(tokenUsage.totalTokens)}
           </span>
         )}

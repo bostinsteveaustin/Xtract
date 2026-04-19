@@ -12,7 +12,11 @@ import { useWorkflows } from "@/hooks/use-workflows";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-export function CreateWorkflowDialog() {
+interface CreateWorkflowDialogProps {
+  variant?: "sidebar" | "page";
+}
+
+export function CreateWorkflowDialog({ variant = "sidebar" }: CreateWorkflowDialogProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("Untitled Pipeline");
   const [templateId, setTemplateId] = useState("ontology-v1");
@@ -35,21 +39,48 @@ export function CreateWorkflowDialog() {
     }
   };
 
-  const trigger = isCollapsed ? (
+  // Page variant — coral pill button matching Nexs style
+  const pageTrigger = (
+    <button
+      className="btn-coral flex items-center gap-2"
+      style={{ fontFamily: "var(--font-sans)" }}
+    >
+      <Plus className="h-4 w-4" />
+      New Workspace
+    </button>
+  );
+
+  const sidebarTrigger = isCollapsed ? (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button variant="ghost" size="icon" className="w-10 h-10 mx-auto">
+        <button
+          style={{ background: "transparent", color: "var(--sidebar-muted)", padding: "0.4rem", borderRadius: "6px", border: "none", cursor: "pointer", display: "flex", margin: "0 auto" }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sidebar-hover)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+        >
           <Plus className="h-4 w-4" />
-        </Button>
+        </button>
       </TooltipTrigger>
-      <TooltipContent side="right">New Pipeline</TooltipContent>
+      <TooltipContent side="right">New Workspace</TooltipContent>
     </Tooltip>
   ) : (
-    <Button variant="ghost" className="w-full justify-start gap-2 px-3">
-      <Plus className="h-4 w-4" />
-      New Pipeline
-    </Button>
+    <button
+      style={{
+        width: "100%", display: "flex", alignItems: "center", gap: "0.5rem",
+        background: "var(--coral)", color: "#FFFFFF", border: "none",
+        borderRadius: "8px", padding: "0.5rem 0.75rem", cursor: "pointer",
+        fontSize: "0.83rem", fontWeight: 500, fontFamily: "var(--font-sans)",
+        transition: "background 0.15s",
+      }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--coral-hover)"; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--coral)"; }}
+    >
+      <Plus className="h-3.5 w-3.5" />
+      New Workspace
+    </button>
   );
+
+  const trigger = variant === "page" ? pageTrigger : sidebarTrigger;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
