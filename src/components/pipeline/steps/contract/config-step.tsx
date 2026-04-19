@@ -1,10 +1,17 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { FileDropZone, formatSize } from "../../interactions/file-drop-zone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Play, Download, FileText, Loader2 } from "lucide-react";
 import type { StepBodyProps } from "../../step-registry";
 import {
@@ -28,6 +35,29 @@ interface FileItem {
   size: string;
 }
 
+interface CTXConfig {
+  id: string;
+  name: string;
+  version: string;
+  status: string;
+  content: unknown;
+}
+
+interface CortxContext {
+  id: string;
+  title: string;
+  description: string;
+  contextType: string;
+}
+
+/** Unified item in the CTX dropdown */
+interface CTXOption {
+  id: string;       // prefixed: "local:{uuid}" or "cortx:{uuid}"
+  label: string;
+  source: "local" | "cortx";
+  content?: unknown; // pre-loaded for local configs
+}
+
 export default function ContractConfigStep({
   stepState,
   onUpdateData,
@@ -36,6 +66,7 @@ export default function ContractConfigStep({
   const [contractFiles, setContractFiles] = useState<FileItem[]>(
     (stepState.data.contractFiles as FileItem[] | undefined) ?? []
   );
+  // Legacy: keep ctxFiles for backwards compat with manual upload
   const [ctxFiles, setCtxFiles] = useState<FileItem[]>(
     (stepState.data.ctxFiles as FileItem[] | undefined) ?? []
   );
@@ -45,6 +76,69 @@ export default function ContractConfigStep({
   const [clientName, setClientName] = useState<string>(
     (stepState.data.clientName as string | undefined) ?? ""
   );
+  const [outputName, setOutputName] = useState<string>(
+    (stepState.data.outputName as string | undefined) ?? ""
+  );
+
+  // ─── CTX selector state ─────────────────────────────────────────────
+  const [ctxOptions, setCtxOptions] = useState<CTXOption[]>([]);
+  const [localConfigs, setLocalConfigs] = useState<CTXConfig[]>([]);
+  const [ctxLoading, setCtxLoading] = useState(true);
+  const [selectedCtxId, setSelectedCtxId] = useState<string>(
+    (stepState.data.selectedCtxId as string | undefined) ?? "__none__"
+  );
+  const [ctxMode, setCtxMode] = useState<"select" | "upload">(
+    (stepState.data.ctxFiles as FileItem[] | undefined)?.length ? "upload" : "select"
+  );
+
+  // Load workspace CTX configs + Cortx account contexts on mount
+  useEffect(() => {
+    async function loadAll() {
+      const options: CTXOption[] = [];
+
+      // 1. Local workspace configs
+      try {
+        const res = await fetch("/api/ctx");
+        if (res.ok) {
+          const data = await res.json();
+          const configs: CTXConfig[] = data.configs ?? [];
+          setLocalConfigs(configs);
+          for (const cfg of configs) {
+            options.push({
+              id: `local:${cfg.id}`,
+              label: `${cfg.name} (v${cfg.version})`,
+              source: "local",
+              content: cfg.content,
+            });
+          }
+        }
+      } catch {
+        // silent
+      }
+
+      // 2. Cortx account contexts
+      try {
+        const res = await fetch("/api/cortx/contexts");
+        if (res.ok) {
+          const data = await res.json();
+          const contexts: CortxContext[] = data.contexts ?? [];
+          for (const ctx of contexts) {
+            options.push({
+              id: `cortx:${ctx.id}`,
+              label: ctx.title,
+              source: "cortx",
+            });
+          }
+        }
+      } catch {
+        // silent — Cortx may be unavailable
+      }
+
+      setCtxOptions(options);
+      setCtxLoading(false);
+    }
+    loadAll();
+  }, []);
 
   const handleContractSelect = useCallback(
     (files: File[]) => {
@@ -67,7 +161,8 @@ export default function ContractConfigStep({
         size: formatSize(f.size),
       }));
       setCtxFiles(items);
-      onUpdateData({ ctxFiles: items });
+      setSelectedCtxId("__none__");
+      onUpdateData({ ctxFiles: items, selectedCtxId: "__none__" });
     },
     [onUpdateData]
   );
@@ -128,20 +223,39 @@ export default function ContractConfigStep({
           throw new Error(`Upload failed: ${uploadError.message}`);
         }
 
+        // Resolve CTX content from dropdown selection or manual upload
         let ctxContent: string | undefined;
-        if (ctxFiles[0]) {
+        if (ctxMode === "select" && selectedCtxId && selectedCtxId !== "__none__") {
+          if (selectedCtxId.startsWith("local:")) {
+            // Local workspace config — content already loaded
+            const option = ctxOptions.find((o) => o.id === selectedCtxId);
+            if (option?.content) {
+              ctxContent = JSON.stringify(option.content);
+            }
+          } else if (selectedCtxId.startsWith("cortx:")) {
+            // Cortx context — fetch full content on the fly
+            const cortxId = selectedCtxId.replace("cortx:", "");
+            const res = await fetch(`/api/cortx/${cortxId}`);
+            if (res.ok) {
+              const data = await res.json();
+              ctxContent = JSON.stringify(data.context);
+            }
+          }
+        } else if (ctxMode === "upload" && ctxFiles[0]) {
           ctxContent = await readCtxFile(ctxFiles[0].file);
         }
 
         onComplete({
           contractFiles,
           ctxFiles,
-          storagePath,      // storage path — ingest route downloads from here
+          storagePath,
           fileName: f.name,
           mimeType,
           engagementRef: refTrimmed,
           clientName: clientName.trim(),
+          outputName: outputName.trim() || refTrimmed,
           ctxContent,
+          selectedCtxId: ctxMode === "select" ? selectedCtxId : undefined,
         });
       } catch (e) {
         setUploadError(e instanceof Error ? e.message : String(e));
@@ -168,42 +282,117 @@ export default function ContractConfigStep({
         }}
       />
 
-      {/* CTX file upload — optional */}
+      {/* CTX selection — dropdown from workspace or manual upload */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="text-xs uppercase tracking-[0.06em] text-muted-foreground font-medium">
             Extraction Context (CTX) — Optional
           </Label>
-          <button
-            type="button"
-            onClick={handleDownloadStarterCtx}
-            className="flex items-center gap-1.5 text-xs text-[var(--pipeline-navy)] hover:underline"
-          >
-            <Download className="h-3 w-3" />
-            Download starter CTX
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setCtxMode(ctxMode === "select" ? "upload" : "select");
+                if (ctxMode === "upload") {
+                  setCtxFiles([]);
+                  onUpdateData({ ctxFiles: [] });
+                }
+              }}
+              className="text-xs text-[var(--pipeline-navy)] hover:underline"
+            >
+              {ctxMode === "select" ? "Upload file instead" : "Select from library"}
+            </button>
+            <button
+              type="button"
+              onClick={handleDownloadStarterCtx}
+              className="flex items-center gap-1.5 text-xs text-[var(--pipeline-navy)] hover:underline"
+            >
+              <Download className="h-3 w-3" />
+              Starter CTX
+            </button>
+          </div>
         </div>
-        <FileDropZone
-          id="ctx-file"
-          label="CTX File"
-          accept=".ctx,.txt,.md"
-          files={ctxFiles}
-          onFilesSelected={handleCtxSelect}
-          onRemove={() => {
-            setCtxFiles([]);
-            onUpdateData({ ctxFiles: [] });
-          }}
-        />
-        {ctxFiles.length === 0 && (
-          <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
-            <FileText className="h-3 w-3 shrink-0" />
-            No CTX uploaded — extraction will use built-in standard rules. Download the starter CTX above to customise per client or sector.
-          </p>
+
+        {ctxMode === "select" ? (
+          <div className="space-y-1.5">
+            <Select
+              value={selectedCtxId}
+              onValueChange={(val) => {
+                setSelectedCtxId(val);
+                onUpdateData({ selectedCtxId: val });
+              }}
+            >
+              <SelectTrigger className="text-sm">
+                <SelectValue placeholder={ctxLoading ? "Loading..." : "Select a CTX file"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">
+                  No CTX — use built-in standard rules
+                </SelectItem>
+                {/* Cortx account contexts */}
+                {ctxOptions.filter((o) => o.source === "cortx").length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-[10px] uppercase tracking-widest text-muted-foreground font-semibold border-t mt-1 pt-2">
+                      Cortx
+                    </div>
+                    {ctxOptions
+                      .filter((o) => o.source === "cortx")
+                      .map((o) => (
+                        <SelectItem key={o.id} value={o.id}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                  </>
+                )}
+                {/* Local workspace configs */}
+                {ctxOptions.filter((o) => o.source === "local").length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-[10px] uppercase tracking-widest text-muted-foreground font-semibold border-t mt-1 pt-2">
+                      Workspace Library
+                    </div>
+                    {ctxOptions
+                      .filter((o) => o.source === "local")
+                      .map((o) => (
+                        <SelectItem key={o.id} value={o.id}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                  </>
+                )}
+              </SelectContent>
+            </Select>
+            {selectedCtxId === "__none__" && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <FileText className="h-3 w-3 shrink-0" />
+                No CTX selected — extraction will use built-in standard rules.
+              </p>
+            )}
+          </div>
+        ) : (
+          <>
+            <FileDropZone
+              id="ctx-file"
+              label="CTX File"
+              accept=".ctx,.txt,.md"
+              files={ctxFiles}
+              onFilesSelected={handleCtxSelect}
+              onRemove={() => {
+                setCtxFiles([]);
+                onUpdateData({ ctxFiles: [] });
+              }}
+            />
+            {ctxFiles.length === 0 && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+                <FileText className="h-3 w-3 shrink-0" />
+                No CTX uploaded — extraction will use built-in standard rules.
+              </p>
+            )}
+          </>
         )}
       </div>
 
-      {/* Engagement details */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Engagement details + output name */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-2">
           <Label htmlFor="engagement-ref" className="text-xs uppercase tracking-[0.06em] text-muted-foreground font-medium">
             Engagement Reference <span className="text-destructive">*</span>
@@ -236,6 +425,24 @@ export default function ContractConfigStep({
             placeholder="e.g. Acme Corp"
             className="text-sm"
           />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="output-name" className="text-xs uppercase tracking-[0.06em] text-muted-foreground font-medium">
+            Output File Name
+          </Label>
+          <Input
+            id="output-name"
+            value={outputName}
+            onChange={(e) => {
+              setOutputName(e.target.value);
+              onUpdateData({ outputName: e.target.value });
+            }}
+            placeholder={engagementRef.trim() || "e.g. Acme-MSA-Review"}
+            className="text-sm"
+          />
+          <p className="text-xs text-muted-foreground">
+            Used for exported file names. Defaults to engagement reference.
+          </p>
         </div>
       </div>
 

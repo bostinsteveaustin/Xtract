@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { buildIcmlJson, buildXlsx } from "@/lib/contract/exporter";
 import type { ContractExtractionResult } from "@/types/contract";
 import { nanoid } from "nanoid";
+import { requireAuth } from "@/lib/api/auth";
 
 export const maxDuration = 120;
 
@@ -15,13 +16,17 @@ function formatSize(bytes: number): string {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json() as {
       result: ContractExtractionResult;
       runId?: string;
+      outputName?: string;
     };
 
-    const { result, runId } = body;
+    const { result, runId, outputName } = body;
 
     if (!result) {
       return NextResponse.json({ error: "Missing extraction result" }, { status: 400 });
@@ -68,18 +73,25 @@ export async function POST(request: Request) {
     const icmlBytes = new TextEncoder().encode(icmlJson).length;
     const summaryBytes = new TextEncoder().encode(JSON.stringify(runSummary, null, 2)).length;
 
+    // Use output name for file naming, falling back to generic names
+    const safeOutputName = (outputName ?? "")
+      .replace(/[^a-zA-Z0-9_-]/g, "_")
+      .replace(/_+/g, "_")
+      .replace(/^_|_$/g, "")
+      || "extraction";
+
     return NextResponse.json({
       files: [
         {
           key: "icml",
-          name: "extraction.icml.json",
+          name: `${safeOutputName}.icml.json`,
           format: "json",
           content: icmlJson,
           size: formatSize(icmlBytes),
         },
         {
           key: "xlsx",
-          name: "contract_extraction.xlsx",
+          name: `${safeOutputName}.xlsx`,
           format: "xlsx",
           content: xlsxBuffer.toString("base64"),
           size: formatSize(xlsxBuffer.length),
@@ -87,7 +99,7 @@ export async function POST(request: Request) {
         },
         {
           key: "runSummary",
-          name: "run_summary.json",
+          name: `${safeOutputName}_summary.json`,
           format: "json",
           content: JSON.stringify(runSummary, null, 2),
           size: formatSize(summaryBytes),

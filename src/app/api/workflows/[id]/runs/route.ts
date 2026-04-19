@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { requireAuth, verifyWorkflowOwnership } from "@/lib/api/auth";
 
 // GET: Fetch run history for a workflow
 export async function GET(
@@ -7,7 +8,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const { id } = await params;
+
+    if (!(await verifyWorkflowOwnership(id, auth.workspaceId))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     const supabase = createAdminClient();
 
     const { data: runs, error } = await supabase
@@ -34,7 +43,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const auth = await requireAuth();
+    if (auth.error) return auth.error;
+
     const { id } = await params;
+
+    if (!(await verifyWorkflowOwnership(id, auth.workspaceId))) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     const body = await request.json();
     const { runId, status, promptTokens, completionTokens, stepTokenLog, ctxContent } = body as {
       runId?: string;

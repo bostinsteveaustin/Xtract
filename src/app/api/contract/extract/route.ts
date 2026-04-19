@@ -3,10 +3,14 @@
 
 import { NextResponse } from "next/server";
 import { extractContract } from "@/lib/contract/extractor";
+import { requireAuth } from "@/lib/api/auth";
 
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json() as {
       documentText: string;

@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { generateMapping, generateTurtle } from "@/lib/ontology/ontology-generator";
+import { requireAuth } from "@/lib/api/auth";
 
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const { step, ctxContent, candidates, config, mappingText } = body as {

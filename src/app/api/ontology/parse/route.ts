@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { parseOpenAPI } from "@/lib/ontology/openapi-parser";
+import { requireAuth } from "@/lib/api/auth";
 
 export async function POST(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const { content } = body as { content: string };

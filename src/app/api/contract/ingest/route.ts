@@ -70,6 +70,11 @@ Return ONLY valid JSON. No markdown.`,
 }
 
 export async function POST(request: Request) {
+  // Auth gate — only authenticated users can ingest documents
+  const { requireAuth } = await import("@/lib/api/auth");
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   let storagePath: string | undefined;
 
   try {

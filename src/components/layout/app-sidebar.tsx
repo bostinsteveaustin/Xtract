@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   PanelLeftClose, PanelLeftOpen, LogOut, FolderOpen,
-  Settings, User,
+  Settings, User, Store,
 } from "lucide-react";
 import { CreateWorkflowDialog } from "./create-workflow-dialog";
 import { cn } from "@/lib/utils";
@@ -91,6 +91,25 @@ export function AppSidebar({ user }: AppSidebarProps) {
       {/* ── New Workspace button ── */}
       <div className="px-2 pt-3 pb-1 flex-shrink-0">
         <CreateWorkflowDialog />
+      </div>
+
+      {/* ── Marketplace link ── */}
+      <div className="px-2 pb-1 flex-shrink-0">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={() => router.push("/marketplace")}
+              className={cn("w-full flex items-center gap-2.5 px-2.5 py-2 rounded-md transition-colors")}
+              style={{ color: "var(--sidebar-fg)" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--sidebar-hover)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+            >
+              <Store className="h-3.5 w-3.5 flex-shrink-0" style={{ color: "var(--sidebar-muted)" }} />
+              {!isCollapsed && <span style={{ fontSize: "0.83rem" }}>Marketplace</span>}
+            </button>
+          </TooltipTrigger>
+          {isCollapsed && <TooltipContent side="right">Cortx Marketplace</TooltipContent>}
+        </Tooltip>
       </div>
 
       {/* ── Workspace list ── */}

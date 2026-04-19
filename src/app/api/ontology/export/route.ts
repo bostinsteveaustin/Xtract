@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { generateCSVExports } from "@/lib/ontology/csv-exporter";
 import { runBenchmarks } from "@/lib/ontology/benchmark-validator";
+import { requireAuth } from "@/lib/api/auth";
 
 export async function POST(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const { turtle, config, flags } = body as {

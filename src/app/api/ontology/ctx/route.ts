@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { produceCTX, enrichCTX } from "@/lib/ontology/ctx-producer";
+import { requireAuth } from "@/lib/api/auth";
 
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
+  const auth = await requireAuth();
+  if (auth.error) return auth.error;
+
   try {
     const body = await request.json();
     const { action, candidates, transcript, ctxContent, enrichment } = body as {
