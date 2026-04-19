@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { LastRunPanel } from "./last-run-panel";
 import {
   FileText, Shield, Brain, Layers, Play, Upload, X,
   Clock, CheckCircle2, AlertCircle, Loader2, Cpu,
@@ -672,7 +673,9 @@ export function WorkspaceDetailView({ workflow: initialWorkflow }: WorkspaceDeta
   const typeColor = TYPE_COLOR[workflow.type ?? "custom"] ?? TYPE_COLOR.custom;
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-row overflow-hidden">
+      {/* ── Left: header + tabs ── */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
       {/* ── Workspace header ── */}
       <div
         style={{
@@ -792,6 +795,10 @@ export function WorkspaceDetailView({ workflow: initialWorkflow }: WorkspaceDeta
         open={newRunOpen}
         onClose={() => setNewRunOpen(false)}
       />
+      </div>{/* end left column */}
+
+      {/* ── Right: last run panel ── */}
+      <LastRunPanel workflowId={workflow.id} />
     </div>
   );
 }
