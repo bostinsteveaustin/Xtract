@@ -719,8 +719,9 @@ function ContextSection({
 
           {/* Mode toggle — mutually exclusive */}
           <div style={{
-            display: "flex", gap: "0.375rem",
+            display: "flex", gap: "0.375rem", width: "100%",
             background: "var(--muted)", borderRadius: "8px", padding: "0.25rem",
+            boxSizing: "border-box",
           }}>
             {(["cortx", "upload"] as const).map((m) => (
               <button
@@ -857,7 +858,12 @@ function ContextSection({
             onClick={handleAttach}
             disabled={!canAttach || attaching}
             className="w-full"
-            style={canAttach ? { background: "var(--coral)", color: "#fff", border: "none", fontWeight: 500 } : { fontWeight: 500 }}
+            style={{
+            background: canAttach ? "var(--coral)" : "var(--muted)",
+            color: canAttach ? "#fff" : "var(--muted-fg)",
+            border: "1px solid var(--border)",
+            fontWeight: 500,
+          }}
           >
             {attaching
               ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Attaching…</>
