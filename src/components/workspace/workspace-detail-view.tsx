@@ -558,8 +558,9 @@ function ContextSection({
   const [uploadName, setUploadName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Shared attaching state
+  // Shared attaching / error state
   const [attaching, setAttaching] = useState(false);
+  const [attachError, setAttachError] = useState<string | null>(null);
 
   // Fetch current CTX name when workspacCtxId changes
   useEffect(() => {
@@ -588,11 +589,12 @@ function ContextSection({
       .finally(() => setCortxLoading(false));
   }, [open, mode]);
 
-  // Reset selection when mode toggles
+  // Reset selection + error when mode toggles
   useEffect(() => {
     setSelectedCortxId(null);
     setUploadFile(null);
     setUploadName("");
+    setAttachError(null);
   }, [mode]);
 
   function handleOpenChange(o: boolean) {
@@ -603,6 +605,7 @@ function ContextSection({
       setSelectedCortxId(null);
       setUploadFile(null);
       setUploadName("");
+      setAttachError(null);
     } else {
       setOpen(true);
     }
@@ -610,6 +613,7 @@ function ContextSection({
 
   async function handleAttach() {
     setAttaching(true);
+    setAttachError(null);
     try {
       let ctxConfigId: string;
       let attachedName: string;
@@ -621,8 +625,12 @@ function ContextSection({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ cortxContextId: selectedCortxId }),
         });
-        if (!res.ok) throw new Error("Import failed");
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({})) as { error?: string };
+          throw new Error(errBody.error ?? `Import failed (${res.status})`);
+        }
         const data = await res.json() as { ctxConfigurationId: string; name: string };
+        if (!data.ctxConfigurationId) throw new Error("Invalid response from import");
         ctxConfigId = data.ctxConfigurationId;
         attachedName = data.name;
       } else {
@@ -634,8 +642,12 @@ function ContextSection({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, rawContent, fileName: uploadFile.name }),
         });
-        if (!res.ok) throw new Error("Upload failed");
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({})) as { error?: string };
+          throw new Error(errBody.error ?? `Upload failed (${res.status})`);
+        }
         const data = await res.json() as { id: string; name: string };
+        if (!data.id) throw new Error("Invalid response from upload");
         ctxConfigId = data.id;
         attachedName = data.name;
       }
@@ -644,8 +656,8 @@ function ContextSection({
       setCtxName(attachedName);
       onCtxChanged(ctxConfigId);
       setOpen(false);
-    } catch {
-      // silent — could add toast
+    } catch (err) {
+      setAttachError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setAttaching(false);
     }
@@ -856,6 +868,17 @@ function ContextSection({
                 </div>
               )}
             </div>
+          )}
+
+          {/* Error message */}
+          {attachError && (
+            <p style={{
+              fontSize: "0.8rem", color: "var(--destructive)",
+              background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.2)",
+              borderRadius: "6px", padding: "0.5rem 0.75rem", margin: 0,
+            }}>
+              {attachError}
+            </p>
           )}
 
           {/* Confirm button */}
