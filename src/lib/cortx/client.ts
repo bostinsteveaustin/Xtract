@@ -95,5 +95,5 @@ export async function browseMarketplace(
 export async function getContextById(
   contextId: string
 ): Promise<CortxContextFull> {
-  return cortxFetch(`/contexts/${contextId}?format=json`);
+  return cortxFetch(`/contexts/${contextId}`);
 }
