@@ -668,6 +668,7 @@ interface WorkspaceDetailViewProps {
 export function WorkspaceDetailView({ workflow: initialWorkflow }: WorkspaceDetailViewProps) {
   const [workflow, setWorkflow] = useState(initialWorkflow);
   const [newRunOpen, setNewRunOpen] = useState(false);
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   // Sidebar bottom links send ?tab=documents|context|settings
@@ -741,6 +742,7 @@ export function WorkspaceDetailView({ workflow: initialWorkflow }: WorkspaceDeta
       {/* ── Tabs — fills remaining height (runs are in sidebar) ── */}
       <Tabs
         value={activeTab}
+        onValueChange={(tab) => router.push(`/workflows/${workflow.id}?tab=${tab}`)}
         style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", gap: 0 }}
       >
         {/* Tab nav bar */}
