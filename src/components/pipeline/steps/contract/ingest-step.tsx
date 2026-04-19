@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { PipelineLog } from "../../interactions/pipeline-log";
 import { MetricCards } from "../../interactions/metric-cards";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertTriangle, RotateCcw } from "lucide-react";
@@ -106,8 +105,6 @@ export default function ContractIngestStep({
 
   return (
     <div className="space-y-4">
-      <PipelineLog entries={stepState.logEntries} streaming={running} />
-
       {metrics.length > 0 && <MetricCards metrics={metrics} />}
 
       {running && (

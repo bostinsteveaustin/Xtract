@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { PipelineLog } from "../../interactions/pipeline-log";
 import { FlagReview } from "../../interactions/flag-review";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Loader2, RotateCcw } from "lucide-react";
@@ -160,8 +159,6 @@ export default function GenerationStep({
 
   return (
     <div className="space-y-4">
-      <PipelineLog entries={stepState.logEntries} streaming={running} />
-
       {running && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />

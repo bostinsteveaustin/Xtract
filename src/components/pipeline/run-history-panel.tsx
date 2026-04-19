@@ -40,10 +40,10 @@ function formatDate(iso: string): string {
 }
 
 const statusBadge: Record<string, string> = {
-  completed: "bg-emerald-100 text-emerald-700",
-  running: "bg-blue-100 text-blue-700",
-  failed: "bg-red-100 text-red-700",
-  pending: "bg-slate-100 text-slate-600",
+  completed: "bg-[var(--tier-working-soft)] text-[var(--tier-working)]",
+  running:   "bg-[var(--coral-soft)] text-[var(--coral)]",
+  failed:    "bg-destructive/10 text-destructive",
+  pending:   "bg-[var(--muted)] text-[var(--muted-fg)]",
 };
 
 interface RunHistoryPanelProps {
@@ -76,7 +76,7 @@ export function RunHistoryPanel({ workflowId }: RunHistoryPanelProps) {
         <History className="h-4 w-4" />
         Run History
         {runs.length > 0 && (
-          <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[10px] font-mono">
+          <span className="rounded-full bg-[var(--muted)] px-1.5 py-0.5 text-[10px] font-mono">
             {runs.length}
           </span>
         )}
