@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AppShell } from "@/components/layout/app-shell";
 import { SidebarProvider } from "@/hooks/use-sidebar";
 import { WorkflowsProvider } from "@/hooks/use-workflows";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -27,7 +27,7 @@ export default async function AppLayout({
     .eq("id", user.id)
     .single();
 
-  const sidebarUser = {
+  const shellUser = {
     id: user.id,
     email: user.email ?? "",
     displayName: profile?.display_name ?? null,
@@ -38,12 +38,9 @@ export default async function AppLayout({
     <TooltipProvider delayDuration={0}>
       <SidebarProvider>
         <WorkflowsProvider>
-          <div className="h-screen flex overflow-hidden" style={{ background: "var(--background)" }}>
-            <AppSidebar user={sidebarUser} />
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-              {children}
-            </main>
-          </div>
+          <AppShell user={shellUser}>
+            {children}
+          </AppShell>
         </WorkflowsProvider>
       </SidebarProvider>
     </TooltipProvider>
