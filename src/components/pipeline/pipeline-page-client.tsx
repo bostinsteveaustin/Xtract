@@ -69,6 +69,8 @@ export function PipelinePageClient({
       .filter(Boolean);
 
     const ctxContent = state.stepStates["ctx-production"]?.data?.ctxContent as string | undefined;
+    // Contract pipeline stores its result in the "extract" step state
+    const extractionResult = state.stepStates["extract"]?.data?.extractionResult ?? null;
 
     fetch(`/api/workflows/${workflowId}/runs`, {
       method: "POST",
@@ -80,6 +82,8 @@ export function PipelinePageClient({
         completionTokens: totalTokenUsage.completionTokens,
         stepTokenLog,
         ctxContent,
+        pipelineType: template.templateId,
+        extractionResult,
       }),
     }).catch(() => {
       // Silent fail — run history is non-critical

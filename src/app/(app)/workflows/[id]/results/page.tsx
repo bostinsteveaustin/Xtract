@@ -43,7 +43,7 @@ export default async function ResultsPage({ params, searchParams }: ResultsPageP
   if (!matchedRun) {
     return (
       <div className="p-6">
-        <Link href="/workflows">
+        <Link href={`/workflows/${workflowId}`}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to workflow
@@ -142,7 +142,7 @@ export default async function ResultsPage({ params, searchParams }: ResultsPageP
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/workflows">
+          <Link href={`/workflows/${workflowId}`}>
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
