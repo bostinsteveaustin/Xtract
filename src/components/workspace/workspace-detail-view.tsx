@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LastRunPanel } from "./last-run-panel";
 import {
   FileText, Shield, Brain, Layers, Play, Upload, X,
@@ -668,6 +668,10 @@ interface WorkspaceDetailViewProps {
 export function WorkspaceDetailView({ workflow: initialWorkflow }: WorkspaceDetailViewProps) {
   const [workflow, setWorkflow] = useState(initialWorkflow);
   const [newRunOpen, setNewRunOpen] = useState(false);
+  const searchParams = useSearchParams();
+
+  // Sidebar bottom links send ?tab=documents|context|settings
+  const activeTab = (searchParams.get("tab") ?? "documents") as "documents" | "context" | "settings";
 
   const typeDef = WORKSPACE_TYPE_REGISTRY.find((t) => t.type === workflow.type) ?? WORKSPACE_TYPE_REGISTRY[3];
   const typeColor = TYPE_COLOR[workflow.type ?? "custom"] ?? TYPE_COLOR.custom;
@@ -734,9 +738,9 @@ export function WorkspaceDetailView({ workflow: initialWorkflow }: WorkspaceDeta
         </div>
       </div>
 
-      {/* ── Tabs — fills remaining height ── */}
+      {/* ── Tabs — fills remaining height (runs are in sidebar) ── */}
       <Tabs
-        defaultValue="runs"
+        value={activeTab}
         style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", gap: 0 }}
       >
         {/* Tab nav bar */}
@@ -747,10 +751,6 @@ export function WorkspaceDetailView({ workflow: initialWorkflow }: WorkspaceDeta
           }}
         >
           <TabsList variant="line" style={{ paddingBottom: 0 }}>
-            <TabsTrigger value="runs" style={{ fontSize: "0.84rem" }}>
-              <Cpu style={{ width: "0.875rem", height: "0.875rem" }} />
-              Pipeline Runs
-            </TabsTrigger>
             <TabsTrigger value="documents" style={{ fontSize: "0.84rem" }}>
               <Upload style={{ width: "0.875rem", height: "0.875rem" }} />
               Source Documents
@@ -768,9 +768,6 @@ export function WorkspaceDetailView({ workflow: initialWorkflow }: WorkspaceDeta
 
         {/* Scrollable tab body */}
         <div style={{ flex: 1, overflowY: "auto" }}>
-          <TabsContent value="runs">
-            <RunsTab workflowId={workflow.id} onNewRun={() => setNewRunOpen(true)} />
-          </TabsContent>
           <TabsContent value="documents">
             <DocumentsTab workflowId={workflow.id} />
           </TabsContent>
