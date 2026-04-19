@@ -1,34 +1,34 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  useState, useEffect, useRef, useCallback,
+  useImperativeHandle, type Ref,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LastRunPanel } from "./last-run-panel";
 import {
-  FileText, Shield, Brain, Layers, Play, Upload, X,
+  FileText, Shield, Brain, Layers, Play, X,
   Clock, CheckCircle2, AlertCircle, Loader2, Cpu,
-  Settings2, FileUp, FlaskConical, ChevronRight,
+  Settings2, FileUp, FlaskConical, ArrowRight,
 } from "lucide-react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { useWorkflows } from "@/hooks/use-workflows";
 import {
   WORKSPACE_TYPE_REGISTRY,
   PIPELINE_REGISTRY,
   getPipelinesForType,
-  type WorkspaceType,
   type WorkspaceTypeDefinition,
 } from "@/lib/pipeline/workspace-registry";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+type ActiveSection = "pipeline-runs" | "documents" | "context" | "settings";
 
 interface WorkflowRun {
   id: string;
@@ -60,14 +60,11 @@ interface WorkflowDetail {
   updated_at: string;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+interface DocumentsTabHandle {
+  triggerUpload: () => void;
+}
 
-const TYPE_COLOR: Record<string, string> = {
-  contract:   "var(--coral)",
-  regulatory: "var(--tier-authoritative)",
-  knowhow:    "var(--tier-working)",
-  custom:     "var(--muted-fg)",
-};
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function TypeIcon({ icon, size = 16 }: { icon: WorkspaceTypeDefinition["icon"]; size?: number }) {
   const p = { width: size, height: size };
@@ -105,19 +102,18 @@ function StatusChip({ status }: { status: string }) {
   const cfg = {
     completed: { icon: CheckCircle2, color: "var(--tier-working)", bg: "var(--tier-working-soft)", label: "Completed" },
     running:   { icon: Loader2,      color: "var(--coral)",        bg: "var(--coral-soft)",        label: "Running"   },
-    failed:    { icon: AlertCircle,  color: "var(--destructive)",  bg: "rgba(var(--destructive-rgb,220,38,38),0.08)", label: "Failed" },
+    failed:    { icon: AlertCircle,  color: "var(--destructive)",  bg: "rgba(220,38,38,0.08)",     label: "Failed"    },
     pending:   { icon: Clock,        color: "var(--muted-fg)",     bg: "var(--muted)",             label: "Pending"   },
   }[status] ?? { icon: Clock, color: "var(--muted-fg)", bg: "var(--muted)", label: status };
 
   const Icon = cfg.icon;
-
   return (
     <span
       style={{
         display: "inline-flex", alignItems: "center", gap: "0.3rem",
         padding: "0.2rem 0.6rem", borderRadius: "999px",
         background: cfg.bg, color: cfg.color,
-        fontSize: "0.72rem", fontWeight: 500,
+        fontSize: "0.72rem", fontWeight: 500, flexShrink: 0,
       }}
     >
       <Icon style={{ width: "0.7rem", height: "0.7rem" }} className={status === "running" ? "animate-spin" : ""} />
@@ -126,13 +122,31 @@ function StatusChip({ status }: { status: string }) {
   );
 }
 
+// ─── Section Header ───────────────────────────────────────────────────────────
+
+function SectionHeader({ title, cta }: { title: string; cta?: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        padding: "1.125rem 2rem",
+        borderBottom: "1px solid var(--border)",
+        background: "var(--paper)",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        flexShrink: 0, minHeight: "3.5rem",
+      }}
+    >
+      <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--foreground)", margin: 0 }}>
+        {title}
+      </h2>
+      {cta}
+    </div>
+  );
+}
+
 // ─── New Run Dialog ───────────────────────────────────────────────────────────
 
 function NewRunDialog({
-  workflowId,
-  workspaceType,
-  open,
-  onClose,
+  workflowId, workspaceType, open, onClose,
 }: {
   workflowId: string;
   workspaceType: string | null;
@@ -161,7 +175,6 @@ function NewRunDialog({
         </DialogHeader>
 
         <div className="space-y-3 pt-1">
-          {/* Pipeline list */}
           <div className="space-y-2">
             {pipelines.map((p) => (
               <button
@@ -176,14 +189,12 @@ function NewRunDialog({
                   display: "flex", alignItems: "flex-start", gap: "0.75rem",
                 }}
               >
-                <div
-                  style={{
-                    width: "1.75rem", height: "1.75rem", borderRadius: "6px",
-                    background: selected === p.key ? "var(--coral)" : "var(--muted)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    flexShrink: 0, marginTop: "0.1rem",
-                  }}
-                >
+                <div style={{
+                  width: "1.75rem", height: "1.75rem", borderRadius: "6px",
+                  background: selected === p.key ? "var(--coral)" : "var(--muted)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexShrink: 0, marginTop: "0.1rem",
+                }}>
                   <FlaskConical style={{ width: "0.875rem", height: "0.875rem", color: selected === p.key ? "#fff" : "var(--muted-fg)" }} />
                 </div>
                 <div>
@@ -198,7 +209,6 @@ function NewRunDialog({
             ))}
           </div>
 
-          {/* Show all toggle */}
           {!showAll && defaults.length < PIPELINE_REGISTRY.length && (
             <button
               onClick={() => setShowAll(true)}
@@ -229,9 +239,9 @@ function NewRunDialog({
   );
 }
 
-// ─── Pipeline Runs Tab ────────────────────────────────────────────────────────
+// ─── Pipeline Runs Section ────────────────────────────────────────────────────
 
-function RunsTab({ workflowId, onNewRun }: { workflowId: string; onNewRun: () => void }) {
+function RunsSection({ workflowId, onNewRun }: { workflowId: string; onNewRun: () => void }) {
   const router = useRouter();
   const [runs, setRuns] = useState<WorkflowRun[]>([]);
   const [loading, setLoading] = useState(true);
@@ -246,102 +256,124 @@ function RunsTab({ workflowId, onNewRun }: { workflowId: string; onNewRun: () =>
 
   if (loading) {
     return (
-      <div style={{ padding: "3rem", textAlign: "center", color: "var(--muted-fg)", fontSize: "0.85rem" }}>
-        Loading runs…
+      <div style={{ display: "flex", justifyContent: "center", paddingTop: "3rem" }}>
+        <Loader2 className="animate-spin h-5 w-5" style={{ color: "var(--muted-fg)" }} />
       </div>
     );
   }
 
   if (runs.length === 0) {
     return (
-      <div style={{ padding: "3.5rem", textAlign: "center" }}>
+      <div style={{ padding: "4rem 2rem", textAlign: "center" }}>
         <div style={{
           width: "3rem", height: "3rem", borderRadius: "50%", background: "var(--muted)",
-          display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          margin: "0 auto 1rem",
         }}>
           <Cpu style={{ width: "1.25rem", height: "1.25rem", color: "var(--muted-fg)" }} />
         </div>
-        <p style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--foreground)", marginBottom: "0.4rem" }}>
-          No runs yet
+        <p style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--foreground)", marginBottom: "0.35rem" }}>
+          No pipeline runs yet
         </p>
-        <p style={{ fontSize: "0.82rem", color: "var(--muted-fg)", marginBottom: "1.25rem" }}>
+        <p style={{ fontSize: "0.82rem", color: "var(--muted-fg)", marginBottom: "1.5rem" }}>
           Start a pipeline run to extract intelligence from your documents.
         </p>
+        {/* Ghost / outline button — primary coral CTA is in the section header */}
         <button
           onClick={onNewRun}
           style={{
-            background: "var(--coral)", color: "#fff", border: "none", borderRadius: "8px",
-            padding: "0.5rem 1.25rem", cursor: "pointer", fontSize: "0.84rem", fontWeight: 500,
+            border: "1.5px solid var(--coral)", borderRadius: "8px",
+            padding: "0.45rem 1.125rem", cursor: "pointer",
+            fontSize: "0.84rem", fontWeight: 500,
+            color: "var(--coral)", background: "transparent",
             display: "inline-flex", alignItems: "center", gap: "0.4rem",
+            transition: "background 0.12s",
           }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--coral-soft)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
         >
-          <Play style={{ width: "0.875rem", height: "0.875rem" }} />
+          <Play style={{ width: "0.8rem", height: "0.8rem" }} />
           New Pipeline Run
         </button>
       </div>
     );
   }
 
+  // Group by pipeline_type (§5.6 — visual seed for Model A)
+  const grouped = runs.reduce<Record<string, WorkflowRun[]>>((acc, run) => {
+    const key = run.pipeline_type ?? "__unknown__";
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(run);
+    return acc;
+  }, {});
+
   return (
     <div>
-      {/* Table header */}
-      <div
-        style={{
-          display: "grid", gridTemplateColumns: "1fr 120px 100px 140px 80px",
-          padding: "0.625rem 1rem", borderBottom: "1px solid var(--border)",
-          fontSize: "0.72rem", fontWeight: 600, color: "var(--muted-fg)",
-          textTransform: "uppercase", letterSpacing: "0.05em",
-        }}
-      >
-        <span>Pipeline</span>
-        <span>Status</span>
-        <span>Tokens</span>
-        <span>Date</span>
-        <span />
-      </div>
-
-      {runs.map((run) => {
-        const pipelineDef = PIPELINE_REGISTRY.find((p) => p.key === run.pipeline_type);
-        const label = pipelineDef?.label ?? run.pipeline_type ?? "Pipeline Run";
+      {Object.entries(grouped).map(([pipelineKey, groupRuns]) => {
+        const pipelineDef = PIPELINE_REGISTRY.find((p) => p.key === pipelineKey);
+        const groupLabel = pipelineDef?.label ?? pipelineKey;
 
         return (
-          <div
-            key={run.id}
-            style={{
-              display: "grid", gridTemplateColumns: "1fr 120px 100px 140px 80px",
-              padding: "0.875rem 1rem", borderBottom: "1px solid var(--border)",
-              alignItems: "center",
-            }}
-          >
-            <div>
-              <div style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)" }}>
-                {label}
-              </div>
-              <div style={{ fontSize: "0.75rem", color: "var(--muted-fg)", marginTop: "0.1rem" }}>
-                Started {formatDateTime(run.started_at ?? run.created_at)}
-              </div>
+          <div key={pipelineKey}>
+            {/* ── Group header ── */}
+            <div
+              style={{
+                padding: "0.5rem 2rem",
+                fontSize: "0.68rem", fontWeight: 700, letterSpacing: "0.07em",
+                textTransform: "uppercase", color: "var(--muted-fg)",
+                background: "var(--background)",
+                borderBottom: "1px solid var(--border)",
+                borderTop: "1px solid var(--border)",
+              }}
+            >
+              {groupLabel}
             </div>
-            <StatusChip status={run.status} />
-            <span style={{ fontSize: "0.82rem", color: "var(--muted-fg)" }}>
-              {run.tokens_used != null ? run.tokens_used.toLocaleString() : "—"}
-            </span>
-            <span style={{ fontSize: "0.82rem", color: "var(--muted-fg)" }}>
-              {formatDate(run.completed_at ?? run.created_at)}
-            </span>
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              {run.status === "completed" && (
-                <button
-                  onClick={() => router.push(`/workflows/${workflowId}/results`)}
-                  style={{
-                    background: "none", border: "none", cursor: "pointer",
-                    color: "var(--coral)", fontSize: "0.78rem", fontWeight: 500,
-                    display: "flex", alignItems: "center", gap: "0.2rem",
-                  }}
-                >
-                  View <ChevronRight style={{ width: "0.8rem", height: "0.8rem" }} />
-                </button>
-              )}
-            </div>
+
+            {/* ── Run rows ── */}
+            {groupRuns.map((run) => (
+              <div
+                key={run.id}
+                style={{
+                  display: "flex", alignItems: "center", gap: "1rem",
+                  padding: "0.875rem 2rem",
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
+                <StatusChip status={run.status} />
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: "0.875rem", color: "var(--foreground)", fontWeight: 400 }}>
+                    {formatDateTime(run.started_at ?? run.created_at)}
+                  </div>
+                  {run.tokens_used != null && run.tokens_used > 0 && (
+                    <div style={{ fontSize: "0.73rem", color: "var(--muted-fg)", marginTop: "0.1rem" }}>
+                      {run.tokens_used.toLocaleString()} tokens
+                    </div>
+                  )}
+                </div>
+
+                {run.completed_at && (
+                  <span style={{ fontSize: "0.78rem", color: "var(--muted-fg)", flexShrink: 0 }}>
+                    {formatDate(run.completed_at)}
+                  </span>
+                )}
+
+                {run.status === "completed" && (
+                  <button
+                    onClick={() => router.push(`/workflows/${workflowId}/results?runId=${run.id}`)}
+                    style={{
+                      background: "none", border: "none", cursor: "pointer",
+                      color: "var(--coral)", fontSize: "0.8rem", fontWeight: 500,
+                      display: "flex", alignItems: "center", gap: "0.25rem",
+                      padding: "0.2rem 0", flexShrink: 0,
+                    }}
+                  >
+                    View results
+                    <ArrowRight style={{ width: "0.8rem", height: "0.8rem" }} />
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         );
       })}
@@ -349,14 +381,21 @@ function RunsTab({ workflowId, onNewRun }: { workflowId: string; onNewRun: () =>
   );
 }
 
-// ─── Source Documents Tab ─────────────────────────────────────────────────────
+// ─── Source Documents Section ─────────────────────────────────────────────────
 
-function DocumentsTab({ workflowId }: { workflowId: string }) {
+function DocumentsTab(
+  { workflowId, ref }: { workflowId: string; ref?: Ref<DocumentsTabHandle> }
+) {
   const [docs, setDocs] = useState<SourceDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Expose upload trigger to parent (used by section header CTA)
+  useImperativeHandle(ref, () => ({
+    triggerUpload: () => inputRef.current?.click(),
+  }));
 
   const fetchDocs = useCallback(() => {
     fetch(`/api/workflows/${workflowId}/documents`)
@@ -377,7 +416,7 @@ function DocumentsTab({ workflowId }: { workflowId: string }) {
       await fetch(`/api/workflows/${workflowId}/documents`, { method: "POST", body: fd });
       await fetchDocs();
     } catch {
-      // show toast in future
+      // toast in future
     } finally {
       setUploading(false);
     }
@@ -404,17 +443,17 @@ function DocumentsTab({ workflowId }: { workflowId: string }) {
           borderRadius: "10px", padding: "1.5rem",
           textAlign: "center", transition: "border-color 0.15s",
           background: dragOver ? "var(--coral-soft)" : "transparent",
-          margin: "1rem",
+          margin: "1.25rem 2rem",
           cursor: "pointer",
         }}
         onClick={() => inputRef.current?.click()}
       >
         <FileUp style={{ width: "1.5rem", height: "1.5rem", color: "var(--muted-fg)", margin: "0 auto 0.5rem" }} />
         <p style={{ fontSize: "0.85rem", color: "var(--foreground)", fontWeight: 500, marginBottom: "0.25rem" }}>
-          {uploading ? "Uploading…" : "Drop files here or click to upload"}
+          {uploading ? "Uploading…" : "Drop files here or click to browse"}
         </p>
         <p style={{ fontSize: "0.75rem", color: "var(--muted-fg)" }}>
-          PDF, DOCX, TXT, XLSX — these become the workspace document pool
+          PDF, DOCX, TXT, XLSX
         </p>
         <input
           ref={inputRef}
@@ -432,11 +471,11 @@ function DocumentsTab({ workflowId }: { workflowId: string }) {
           Loading…
         </div>
       ) : docs.length === 0 ? (
-        <p style={{ textAlign: "center", color: "var(--muted-fg)", fontSize: "0.82rem", padding: "1rem" }}>
+        <p style={{ textAlign: "center", color: "var(--muted-fg)", fontSize: "0.82rem", padding: "1rem 2rem" }}>
           No documents yet. Upload files above.
         </p>
       ) : (
-        <div style={{ margin: "0 1rem" }}>
+        <div style={{ margin: "0 2rem" }}>
           {docs.map((doc) => (
             <div
               key={doc.id}
@@ -447,7 +486,10 @@ function DocumentsTab({ workflowId }: { workflowId: string }) {
             >
               <FileText style={{ width: "1rem", height: "1rem", color: "var(--muted-fg)", flexShrink: 0 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+                <div style={{
+                  fontSize: "0.875rem", fontWeight: 500, color: "var(--foreground)",
+                  overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis",
+                }}>
                   {doc.filename}
                 </div>
                 <div style={{ fontSize: "0.75rem", color: "var(--muted-fg)" }}>
@@ -473,18 +515,16 @@ function DocumentsTab({ workflowId }: { workflowId: string }) {
   );
 }
 
-// ─── Context Tab ──────────────────────────────────────────────────────────────
+// ─── Context Section ──────────────────────────────────────────────────────────
 
-function ContextTab({ workflowId, hasCtx }: { workflowId: string; hasCtx: boolean }) {
-  void workflowId; // will be used when CTX management is wired up
+function ContextSection({ workflowId, hasCtx }: { workflowId: string; hasCtx: boolean }) {
+  void workflowId;
   return (
-    <div style={{ padding: "2rem 1rem" }}>
-      <div
-        style={{
-          border: "1px solid var(--border)", borderRadius: "10px",
-          padding: "1.5rem", background: "var(--paper)",
-        }}
-      >
+    <div style={{ padding: "1.5rem 2rem" }}>
+      <div style={{
+        border: "1px solid var(--border)", borderRadius: "10px",
+        padding: "1.5rem", background: "var(--paper)",
+      }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: "1rem", marginBottom: "1rem" }}>
           <div style={{
             width: "2.25rem", height: "2.25rem", borderRadius: "8px",
@@ -505,29 +545,25 @@ function ContextTab({ workflowId, hasCtx }: { workflowId: string; hasCtx: boolea
             </div>
           </div>
         </div>
-        <button
-          style={{
-            background: "var(--muted)", border: "1px solid var(--border)",
-            borderRadius: "7px", padding: "0.4rem 0.875rem",
-            fontSize: "0.8rem", fontWeight: 500, color: "var(--foreground)",
-            cursor: "pointer",
-          }}
-        >
+        <button style={{
+          background: "var(--muted)", border: "1px solid var(--border)",
+          borderRadius: "7px", padding: "0.4rem 0.875rem",
+          fontSize: "0.8rem", fontWeight: 500, color: "var(--foreground)",
+          cursor: "pointer",
+        }}>
           {hasCtx ? "Replace CTX" : "Attach CTX"}
         </button>
       </div>
-
       <p style={{ fontSize: "0.75rem", color: "var(--muted-fg)", marginTop: "1rem", lineHeight: 1.6 }}>
         Pipeline-level technical CTX overrides the workspace CTX for that specific run.
-        Manage per-run CTX from the Pipeline Runs tab.
       </p>
     </div>
   );
 }
 
-// ─── Settings Tab ─────────────────────────────────────────────────────────────
+// ─── Settings Section ─────────────────────────────────────────────────────────
 
-function SettingsTab({
+function SettingsSection({
   workflow,
   onUpdated,
 }: {
@@ -542,6 +578,8 @@ function SettingsTab({
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
+  const typeDef = WORKSPACE_TYPE_REGISTRY.find((t) => t.type === workflow.type) ?? WORKSPACE_TYPE_REGISTRY[3];
+
   async function handleSave() {
     setSaving(true);
     await updateWorkflow(workflow.id, { name, description: description || undefined });
@@ -555,11 +593,8 @@ function SettingsTab({
     router.push("/workflows");
   }
 
-  const typeDef = WORKSPACE_TYPE_REGISTRY.find((t) => t.type === workflow.type) ?? WORKSPACE_TYPE_REGISTRY[3];
-  const typeColor = TYPE_COLOR[workflow.type ?? "custom"] ?? TYPE_COLOR.custom;
-
   return (
-    <div style={{ padding: "1.5rem 1rem", maxWidth: "480px" }}>
+    <div style={{ padding: "1.5rem 2rem", maxWidth: "480px" }}>
       <div className="space-y-5">
         <div className="space-y-1.5">
           <Label style={{ fontSize: "0.82rem" }}>Workspace name</Label>
@@ -577,21 +612,12 @@ function SettingsTab({
           />
         </div>
 
-        <div className="space-y-1.5">
-          <Label style={{ fontSize: "0.82rem" }}>Type</Label>
-          <div
-            style={{
-              display: "inline-flex", alignItems: "center", gap: "0.375rem",
-              padding: "0.3rem 0.75rem", borderRadius: "8px",
-              border: "1px solid var(--border)", background: `${typeColor}08`,
-              color: typeColor, fontSize: "0.82rem", fontWeight: 500,
-            }}
-          >
-            <TypeIcon icon={typeDef.icon} size={13} />
-            {typeDef.label}
-          </div>
-          <p style={{ fontSize: "0.75rem", color: "var(--muted-fg)", marginTop: "0.25rem" }}>
-            Workspace type is locked after creation (v1).
+        {/* Type — plain read-only field, not chip component (§5.1) */}
+        <div className="space-y-1">
+          <Label style={{ fontSize: "0.82rem" }}>Workspace type</Label>
+          <p style={{ fontSize: "0.875rem", color: "var(--foreground)" }}>{typeDef.label}</p>
+          <p style={{ fontSize: "0.75rem", color: "var(--muted-fg)" }}>
+            Workspace type cannot be changed after creation.
           </p>
         </div>
 
@@ -600,17 +626,12 @@ function SettingsTab({
           disabled={saving || !name.trim()}
           style={{ background: "var(--coral)", color: "#fff", border: "none", fontWeight: 500 }}
         >
-          {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Saving…</> : "Save Changes"}
+          {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving…</> : "Save Changes"}
         </Button>
       </div>
 
       {/* Danger zone */}
-      <div
-        style={{
-          marginTop: "2.5rem", paddingTop: "1.5rem",
-          borderTop: "1px solid var(--border)",
-        }}
-      >
+      <div style={{ marginTop: "2.5rem", paddingTop: "1.5rem", borderTop: "1px solid var(--border)" }}>
         <h3 style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--destructive)", marginBottom: "0.75rem" }}>
           Danger zone
         </h3>
@@ -668,124 +689,91 @@ interface WorkspaceDetailViewProps {
 export function WorkspaceDetailView({ workflow: initialWorkflow }: WorkspaceDetailViewProps) {
   const [workflow, setWorkflow] = useState(initialWorkflow);
   const [newRunOpen, setNewRunOpen] = useState(false);
-  const router = useRouter();
   const searchParams = useSearchParams();
+  const docsRef = useRef<DocumentsTabHandle>(null);
 
-  // Sidebar bottom links send ?tab=documents|context|settings
-  const activeTab = (searchParams.get("tab") ?? "documents") as "documents" | "context" | "settings";
+  // Section driven by ?section= param; default = pipeline-runs
+  const activeSection = (searchParams.get("section") ?? "pipeline-runs") as ActiveSection;
 
-  const typeDef = WORKSPACE_TYPE_REGISTRY.find((t) => t.type === workflow.type) ?? WORKSPACE_TYPE_REGISTRY[3];
-  const typeColor = TYPE_COLOR[workflow.type ?? "custom"] ?? TYPE_COLOR.custom;
+  // Section header config
+  const sectionMeta: Record<ActiveSection, { title: string; cta?: React.ReactNode }> = {
+    "pipeline-runs": {
+      title: "Pipeline Runs",
+      cta: (
+        <button
+          onClick={() => setNewRunOpen(true)}
+          style={{
+            background: "var(--coral)", color: "#fff", border: "none",
+            borderRadius: "8px", padding: "0.5rem 1.1rem",
+            cursor: "pointer", fontSize: "0.84rem", fontWeight: 500,
+            display: "flex", alignItems: "center", gap: "0.4rem",
+            transition: "background 0.15s",
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--coral-hover)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--coral)"; }}
+        >
+          <Play style={{ width: "0.875rem", height: "0.875rem" }} />
+          New Pipeline Run
+        </button>
+      ),
+    },
+    documents: {
+      title: "Source Documents",
+      cta: (
+        <button
+          onClick={() => docsRef.current?.triggerUpload()}
+          style={{
+            background: "var(--coral)", color: "#fff", border: "none",
+            borderRadius: "8px", padding: "0.5rem 1.1rem",
+            cursor: "pointer", fontSize: "0.84rem", fontWeight: 500,
+            display: "flex", alignItems: "center", gap: "0.4rem",
+            transition: "background 0.15s",
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--coral-hover)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--coral)"; }}
+        >
+          <FileUp style={{ width: "0.875rem", height: "0.875rem" }} />
+          Add Documents
+        </button>
+      ),
+    },
+    context:  { title: "Context"  },
+    settings: { title: "Settings" },
+  };
+
+  const { title, cta } = sectionMeta[activeSection] ?? sectionMeta["pipeline-runs"];
 
   return (
-    <div className="flex-1 flex flex-row overflow-hidden">
-      {/* ── Left: header + tabs ── */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-      {/* ── Workspace header ── */}
-      <div
-        style={{
-          padding: "1.5rem 2rem 1rem",
-          borderBottom: "1px solid var(--border)",
-          background: "var(--paper)",
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-          <div>
-            {/* Type chip */}
-            <div
-              style={{
-                display: "inline-flex", alignItems: "center", gap: "0.35rem",
-                padding: "0.2rem 0.6rem", borderRadius: "999px",
-                background: `${typeColor}12`, color: typeColor,
-                fontSize: "0.72rem", fontWeight: 600, letterSpacing: "0.02em",
-                marginBottom: "0.5rem",
-              }}
-            >
-              <TypeIcon icon={typeDef.icon} size={11} />
-              {typeDef.label}
-            </div>
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* ── Section header ── */}
+      <SectionHeader title={title} cta={cta} />
 
-            {/* Name */}
-            <h1 style={{ fontSize: "1.35rem", fontWeight: 700, color: "var(--foreground)", margin: 0, lineHeight: 1.2 }}>
-              {workflow.name}
-            </h1>
-
-            {/* Description */}
-            {workflow.description && (
-              <p style={{ fontSize: "0.84rem", color: "var(--muted-fg)", marginTop: "0.3rem", lineHeight: 1.5 }}>
-                {workflow.description}
-              </p>
-            )}
-          </div>
-
-          {/* New Run CTA */}
-          <button
-            onClick={() => setNewRunOpen(true)}
-            style={{
-              background: "var(--coral)", color: "#fff", border: "none",
-              borderRadius: "8px", padding: "0.55rem 1.1rem",
-              cursor: "pointer", fontSize: "0.84rem", fontWeight: 500,
-              display: "flex", alignItems: "center", gap: "0.4rem",
-              flexShrink: 0, marginLeft: "1.5rem",
-              transition: "background 0.15s",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--coral-hover)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--coral)"; }}
-          >
-            <Play style={{ width: "0.875rem", height: "0.875rem" }} />
-            New Pipeline Run
-          </button>
-        </div>
-      </div>
-
-      {/* ── Tabs — fills remaining height (runs are in sidebar) ── */}
-      <Tabs
-        value={activeTab}
-        onValueChange={(tab) => router.push(`/workflows/${workflow.id}?tab=${tab}`)}
-        style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", gap: 0 }}
-      >
-        {/* Tab nav bar */}
-        <div
-          style={{
-            background: "var(--paper)", borderBottom: "1px solid var(--border)",
-            padding: "0 2rem", flexShrink: 0,
-          }}
-        >
-          <TabsList variant="line" style={{ paddingBottom: 0 }}>
-            <TabsTrigger value="documents" style={{ fontSize: "0.84rem" }}>
-              <Upload style={{ width: "0.875rem", height: "0.875rem" }} />
-              Source Documents
-            </TabsTrigger>
-            <TabsTrigger value="context" style={{ fontSize: "0.84rem" }}>
-              <Brain style={{ width: "0.875rem", height: "0.875rem" }} />
-              Context
-            </TabsTrigger>
-            <TabsTrigger value="settings" style={{ fontSize: "0.84rem" }}>
-              <Settings2 style={{ width: "0.875rem", height: "0.875rem" }} />
-              Settings
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        {/* Scrollable tab body */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
-          <TabsContent value="documents">
-            <DocumentsTab workflowId={workflow.id} />
-          </TabsContent>
-          <TabsContent value="context">
-            <ContextTab workflowId={workflow.id} hasCtx={workflow.workspace_ctx_id != null} />
-          </TabsContent>
-          <TabsContent value="settings">
-            <SettingsTab
+      {/* ── Section body + optional right rail ── */}
+      <div className="flex-1 flex flex-row overflow-hidden">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto min-w-0">
+          {activeSection === "pipeline-runs" && (
+            <RunsSection workflowId={workflow.id} onNewRun={() => setNewRunOpen(true)} />
+          )}
+          {activeSection === "documents" && (
+            <DocumentsTab ref={docsRef} workflowId={workflow.id} />
+          )}
+          {activeSection === "context" && (
+            <ContextSection workflowId={workflow.id} hasCtx={workflow.workspace_ctx_id != null} />
+          )}
+          {activeSection === "settings" && (
+            <SettingsSection
               workflow={workflow}
-              onUpdated={(updates) =>
-                setWorkflow((prev) => ({ ...prev, ...updates }))
-              }
+              onUpdated={(updates) => setWorkflow((prev) => ({ ...prev, ...updates }))}
             />
-          </TabsContent>
+          )}
         </div>
-      </Tabs>
+
+        {/* Right rail — only on Pipeline Runs (§5.4, AC#10) */}
+        {activeSection === "pipeline-runs" && (
+          <LastRunPanel workflowId={workflow.id} />
+        )}
+      </div>
 
       {/* New Run dialog */}
       <NewRunDialog
@@ -794,10 +782,6 @@ export function WorkspaceDetailView({ workflow: initialWorkflow }: WorkspaceDeta
         open={newRunOpen}
         onClose={() => setNewRunOpen(false)}
       />
-      </div>{/* end left column */}
-
-      {/* ── Right: last run panel ── */}
-      <LastRunPanel workflowId={workflow.id} />
     </div>
   );
 }
