@@ -620,10 +620,15 @@ function ContextSection({
 
       if (mode === "cortx") {
         if (!selectedCortxId) return;
+        const selectedCtx = cortxContexts.find((c) => c.id === selectedCortxId);
         const res = await fetch("/api/cortx/import", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cortxContextId: selectedCortxId }),
+          body: JSON.stringify({
+            cortxContextId: selectedCortxId,
+            contextTitle: selectedCtx?.title,
+            contextDescription: selectedCtx?.description,
+          }),
         });
         if (!res.ok) {
           const errBody = await res.json().catch(() => ({})) as { error?: string };
