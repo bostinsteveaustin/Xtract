@@ -75,21 +75,25 @@ ALTER TABLE workflow_source_documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pipeline_run_documents    ENABLE ROW LEVEL SECURITY;
 
 -- workflow_source_documents — scoped via workflow → workspace
-CREATE POLICY IF NOT EXISTS "workflow_source_docs_select" ON workflow_source_documents
+-- DROP IF EXISTS makes the block idempotent (CREATE POLICY has no IF NOT EXISTS)
+DROP POLICY IF EXISTS "workflow_source_docs_select" ON workflow_source_documents;
+CREATE POLICY "workflow_source_docs_select" ON workflow_source_documents
   FOR SELECT USING (
     workflow_id IN (
       SELECT id FROM workflows WHERE workspace_id = get_my_workspace_id()
     )
   );
 
-CREATE POLICY IF NOT EXISTS "workflow_source_docs_insert" ON workflow_source_documents
+DROP POLICY IF EXISTS "workflow_source_docs_insert" ON workflow_source_documents;
+CREATE POLICY "workflow_source_docs_insert" ON workflow_source_documents
   FOR INSERT WITH CHECK (
     workflow_id IN (
       SELECT id FROM workflows WHERE workspace_id = get_my_workspace_id()
     )
   );
 
-CREATE POLICY IF NOT EXISTS "workflow_source_docs_delete" ON workflow_source_documents
+DROP POLICY IF EXISTS "workflow_source_docs_delete" ON workflow_source_documents;
+CREATE POLICY "workflow_source_docs_delete" ON workflow_source_documents
   FOR DELETE USING (
     workflow_id IN (
       SELECT id FROM workflows WHERE workspace_id = get_my_workspace_id()
@@ -97,7 +101,8 @@ CREATE POLICY IF NOT EXISTS "workflow_source_docs_delete" ON workflow_source_doc
   );
 
 -- pipeline_run_documents — scoped via run → workflow → workspace
-CREATE POLICY IF NOT EXISTS "pipeline_run_docs_select" ON pipeline_run_documents
+DROP POLICY IF EXISTS "pipeline_run_docs_select" ON pipeline_run_documents;
+CREATE POLICY "pipeline_run_docs_select" ON pipeline_run_documents
   FOR SELECT USING (
     pipeline_run_id IN (
       SELECT wr.id FROM workflow_runs wr
@@ -106,7 +111,8 @@ CREATE POLICY IF NOT EXISTS "pipeline_run_docs_select" ON pipeline_run_documents
     )
   );
 
-CREATE POLICY IF NOT EXISTS "pipeline_run_docs_insert" ON pipeline_run_documents
+DROP POLICY IF EXISTS "pipeline_run_docs_insert" ON pipeline_run_documents;
+CREATE POLICY "pipeline_run_docs_insert" ON pipeline_run_documents
   FOR INSERT WITH CHECK (
     pipeline_run_id IN (
       SELECT wr.id FROM workflow_runs wr
