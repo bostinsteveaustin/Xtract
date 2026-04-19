@@ -5,6 +5,7 @@ import { PipelineBody } from "./pipeline-body";
 import { StepCard } from "./step-card";
 import { StepConnector } from "./step-connector";
 import { RunHistoryPanel } from "./run-history-panel";
+import { WorkspaceOutputRail, type RailLogEntry, type RawFileData } from "./workspace-output-rail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePipelineExecution } from "@/hooks/use-pipeline-execution";
 import { getStepBodyLoader, type StepBodyProps } from "./step-registry";
@@ -85,6 +86,28 @@ export function PipelinePageClient({
     });
   }, [isComplete, state, template, workflowId, totalTokenUsage]);
 
+  // Derive right-rail data from step states
+  const allLogEntries = useMemo((): RailLogEntry[] => {
+    return template.steps.flatMap((step) => {
+      const ss = state.stepStates[step.stepId];
+      return (ss?.logEntries ?? []).map((e) => ({ ...e, stepLabel: step.title }));
+    });
+  }, [state.stepStates, template.steps]);
+
+  const rawFiles = useMemo((): RawFileData[] => {
+    // Find the first step that has files data (typically the export step)
+    for (const step of [...template.steps].reverse()) {
+      const ss = state.stepStates[step.stepId];
+      if (ss?.data?.files) return ss.data.files as RawFileData[];
+    }
+    return [];
+  }, [state.stepStates, template.steps]);
+
+  const isRunning = useMemo(
+    () => Object.values(state.stepStates).some((ss) => ss.status === "running"),
+    [state.stepStates]
+  );
+
   // Lazy-load step body components
   const StepComponents = useMemo(() => {
     const map: Record<string, React.LazyExoticComponent<React.ComponentType<StepBodyProps>>> = {};
@@ -98,74 +121,84 @@ export function PipelinePageClient({
   }, [template]);
 
   return (
-    <PipelineBody
-      workflowId={workflowId}
-      workflowName={workflowName}
-      metadata={{
-        templateName: template.name,
-        runId: state.runId,
-      }}
-      mode={state.mode}
-      onModeChange={setMode}
-      totalTokenUsage={totalTokenUsage}
-    >
-      {/* Run history */}
-      <div className="mb-8">
-        <RunHistoryPanel workflowId={workflowId} />
-      </div>
+    <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
+      {/* ── Centre: pipeline steps ── */}
+      <PipelineBody
+        workflowId={workflowId}
+        workflowName={workflowName}
+        metadata={{
+          templateName: template.name,
+          runId: state.runId,
+        }}
+        mode={state.mode}
+        onModeChange={setMode}
+        totalTokenUsage={totalTokenUsage}
+      >
+        {/* Run history */}
+        <div className="mb-8">
+          <RunHistoryPanel workflowId={workflowId} />
+        </div>
 
-      {template.steps.map((step, i) => {
-        const stepState = getStepState(step.stepId);
-        const StepBody = StepComponents[step.stepId];
-        const flagCount = stepState.flags.filter(
-          (f) => f.resolution === "pending"
-        ).length;
+        {template.steps.map((step, i) => {
+          const stepState = getStepState(step.stepId);
+          const StepBody = StepComponents[step.stepId];
+          const flagCount = stepState.flags.filter(
+            (f) => f.resolution === "pending"
+          ).length;
 
-        return (
-          <div key={step.stepId}>
-            {i > 0 && (
-              <StepConnector
-                prevStatus={getStepState(template.steps[i - 1].stepId).status}
-              />
-            )}
-            <StepCard
-              stepNumber={step.stepNumber}
-              label={step.label}
-              title={step.title}
-              status={stepState.status}
-              flagCount={flagCount > 0 ? flagCount : undefined}
-              tokenUsage={stepState.tokenUsage}
-            >
-              {StepBody ? (
-                <Suspense fallback={<StepSkeleton />}>
-                  <StepBody
-                    workflowId={workflowId}
-                    stepId={step.stepId}
-                    stepState={stepState}
-                    allStepStates={state.stepStates}
-                    onUpdateData={(data) => updateStepData(step.stepId, data)}
-                    onStart={() => startStep(step.stepId)}
-                    onComplete={(data) => completeStep(step.stepId, data)}
-                    onError={(error) => failStep(step.stepId, error)}
-                    onLogEntry={(entry) => addLogEntry(step.stepId, entry)}
-                    onUpdateFlags={(flags) => updateFlags(step.stepId, flags)}
-                    onResolveFlag={(flagId, resolution) =>
-                      resolveFlag(step.stepId, flagId, resolution)
-                    }
-                    onUpdateTokenUsage={(usage) =>
-                      updateTokenUsage(step.stepId, usage)
-                    }
-                  />
-                </Suspense>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {step.description}
-                </p>
+          return (
+            <div key={step.stepId}>
+              {i > 0 && (
+                <StepConnector
+                  prevStatus={getStepState(template.steps[i - 1].stepId).status}
+                />
               )}
-            </StepCard>
-          </div>
-        );
-      })}
-    </PipelineBody>
+              <StepCard
+                stepNumber={step.stepNumber}
+                label={step.label}
+                title={step.title}
+                status={stepState.status}
+                flagCount={flagCount > 0 ? flagCount : undefined}
+                tokenUsage={stepState.tokenUsage}
+              >
+                {StepBody ? (
+                  <Suspense fallback={<StepSkeleton />}>
+                    <StepBody
+                      workflowId={workflowId}
+                      stepId={step.stepId}
+                      stepState={stepState}
+                      allStepStates={state.stepStates}
+                      onUpdateData={(data) => updateStepData(step.stepId, data)}
+                      onStart={() => startStep(step.stepId)}
+                      onComplete={(data) => completeStep(step.stepId, data)}
+                      onError={(error) => failStep(step.stepId, error)}
+                      onLogEntry={(entry) => addLogEntry(step.stepId, entry)}
+                      onUpdateFlags={(flags) => updateFlags(step.stepId, flags)}
+                      onResolveFlag={(flagId, resolution) =>
+                        resolveFlag(step.stepId, flagId, resolution)
+                      }
+                      onUpdateTokenUsage={(usage) =>
+                        updateTokenUsage(step.stepId, usage)
+                      }
+                    />
+                  </Suspense>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {step.description}
+                  </p>
+                )}
+              </StepCard>
+            </div>
+          );
+        })}
+      </PipelineBody>
+
+      {/* ── Right: output rail ── */}
+      <WorkspaceOutputRail
+        logEntries={allLogEntries}
+        rawFiles={rawFiles}
+        isRunning={isRunning}
+      />
+    </div>
   );
 }

@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { AppHeader } from "@/components/layout/app-header";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { SidebarProvider } from "@/hooks/use-sidebar";
 import { WorkflowsProvider } from "@/hooks/use-workflows";
@@ -21,7 +20,6 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  // Fetch profile for sidebar user info
   const admin = createAdminClient();
   const { data: profile } = await admin
     .from("profiles")
@@ -40,15 +38,11 @@ export default async function AppLayout({
     <TooltipProvider delayDuration={0}>
       <SidebarProvider>
         <WorkflowsProvider>
-          <div className="h-screen flex overflow-hidden">
-            {/* Left sidebar */}
+          <div className="h-screen flex overflow-hidden" style={{ background: "var(--background)" }}>
             <AppSidebar user={sidebarUser} />
-
-            {/* Right: header + main content */}
-            <div className="flex-1 flex flex-col min-w-0">
-              <AppHeader email={user.email ?? ""} />
-              <main className="flex-1 overflow-auto">{children}</main>
-            </div>
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+              {children}
+            </main>
           </div>
         </WorkflowsProvider>
       </SidebarProvider>

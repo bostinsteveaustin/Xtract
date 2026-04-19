@@ -92,7 +92,7 @@ function ObligationCard({
         <Button
           size="sm"
           variant={status === "approved" ? "default" : "outline"}
-          className={`h-6 text-[10px] px-2 ${status === "approved" ? "bg-green-600 hover:bg-green-700" : ""}`}
+          className={`h-6 text-[10px] px-2 ${status === "approved" ? "bg-[var(--tier-working)] hover:bg-[var(--tier-working)]/90 text-white" : ""}`}
           onClick={(e) => { e.stopPropagation(); onStatus(obligation.obligationID, "approved"); }}
         >
           <Check className="h-3 w-3 mr-1" />

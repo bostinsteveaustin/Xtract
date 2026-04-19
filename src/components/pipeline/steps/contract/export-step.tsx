@@ -182,7 +182,7 @@ export default function ContractExportStep({
       {isReady && stepState.status !== "complete" && (
         <Button
           onClick={handleComplete}
-          className="bg-[var(--pipeline-navy)] hover:bg-[var(--pipeline-navy)]/90"
+          className="bg-[var(--coral)] hover:bg-[var(--coral-hover)]"
         >
           Finish pipeline run
         </Button>
