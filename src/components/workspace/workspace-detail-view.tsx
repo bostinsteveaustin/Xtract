@@ -517,10 +517,146 @@ function DocumentsTab(
 
 // ─── Context Section ──────────────────────────────────────────────────────────
 
-function ContextSection({ workflowId, hasCtx }: { workflowId: string; hasCtx: boolean }) {
-  void workflowId;
+interface CortxContextItem {
+  id: string;
+  title: string;
+  description: string;
+}
+
+interface CtxConfigSummary {
+  id: string;
+  name: string;
+}
+
+function ContextSection({
+  workflowId,
+  workspacCtxId,
+  onCtxChanged,
+}: {
+  workflowId: string;
+  workspacCtxId: string | null;
+  onCtxChanged: (ctxId: string) => void;
+}) {
+  const { updateWorkflow } = useWorkflows();
+
+  // Dialog open state
+  const [open, setOpen] = useState(false);
+  // Mutually exclusive mode
+  const [mode, setMode] = useState<"cortx" | "upload">("cortx");
+
+  // Current CTX name (fetched when workspacCtxId is set)
+  const [ctxName, setCtxName] = useState<string | null>(null);
+
+  // Cortx mode state
+  const [cortxContexts, setCortxContexts] = useState<CortxContextItem[]>([]);
+  const [cortxLoading, setCortxLoading] = useState(false);
+  const [cortxError, setCortxError] = useState<string | null>(null);
+  const [selectedCortxId, setSelectedCortxId] = useState<string | null>(null);
+
+  // Upload mode state
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadName, setUploadName] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Shared attaching state
+  const [attaching, setAttaching] = useState(false);
+
+  // Fetch current CTX name when workspacCtxId changes
+  useEffect(() => {
+    if (!workspacCtxId) { setCtxName(null); return; }
+    fetch("/api/ctx")
+      .then((r) => r.json())
+      .then((d: { configs?: CtxConfigSummary[] }) => {
+        const found = (d.configs ?? []).find((c) => c.id === workspacCtxId);
+        setCtxName(found?.name ?? null);
+      })
+      .catch(() => {});
+  }, [workspacCtxId]);
+
+  // Load Cortx contexts when dialog opens in cortx mode
+  useEffect(() => {
+    if (!open || mode !== "cortx") return;
+    setCortxLoading(true);
+    setCortxError(null);
+    fetch("/api/cortx/contexts")
+      .then((r) => r.json())
+      .then((d: { contexts?: CortxContextItem[]; error?: string }) => {
+        setCortxContexts(d.contexts ?? []);
+        if (d.error) setCortxError(d.error);
+      })
+      .catch(() => setCortxError("Failed to load contexts"))
+      .finally(() => setCortxLoading(false));
+  }, [open, mode]);
+
+  // Reset selection when mode toggles
+  useEffect(() => {
+    setSelectedCortxId(null);
+    setUploadFile(null);
+    setUploadName("");
+  }, [mode]);
+
+  function handleOpenChange(o: boolean) {
+    if (!o) {
+      // Reset all transient state on close
+      setOpen(false);
+      setMode("cortx");
+      setSelectedCortxId(null);
+      setUploadFile(null);
+      setUploadName("");
+    } else {
+      setOpen(true);
+    }
+  }
+
+  async function handleAttach() {
+    setAttaching(true);
+    try {
+      let ctxConfigId: string;
+      let attachedName: string;
+
+      if (mode === "cortx") {
+        if (!selectedCortxId) return;
+        const res = await fetch("/api/cortx/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cortxContextId: selectedCortxId }),
+        });
+        if (!res.ok) throw new Error("Import failed");
+        const data = await res.json() as { ctxConfigurationId: string; name: string };
+        ctxConfigId = data.ctxConfigurationId;
+        attachedName = data.name;
+      } else {
+        if (!uploadFile) return;
+        const rawContent = await uploadFile.text();
+        const name = uploadName.trim() || uploadFile.name.replace(/\.[^.]+$/, "");
+        const res = await fetch("/api/ctx", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, rawContent, fileName: uploadFile.name }),
+        });
+        if (!res.ok) throw new Error("Upload failed");
+        const data = await res.json() as { id: string; name: string };
+        ctxConfigId = data.id;
+        attachedName = data.name;
+      }
+
+      await updateWorkflow(workflowId, { workspace_ctx_id: ctxConfigId });
+      setCtxName(attachedName);
+      onCtxChanged(ctxConfigId);
+      setOpen(false);
+    } catch {
+      // silent — could add toast
+    } finally {
+      setAttaching(false);
+    }
+  }
+
+  const hasCtx = workspacCtxId != null;
+  const canAttach = mode === "cortx" ? !!selectedCortxId : !!uploadFile;
+
   return (
     <div style={{ padding: "1.5rem 2rem" }}>
+      {/* Current CTX card */}
       <div style={{
         border: "1px solid var(--border)", borderRadius: "10px",
         padding: "1.5rem", background: "var(--paper)",
@@ -538,6 +674,11 @@ function ContextSection({ workflowId, hasCtx }: { workflowId: string; hasCtx: bo
             <div style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--foreground)", marginBottom: "0.25rem" }}>
               Workspace CTX
             </div>
+            {hasCtx && ctxName && (
+              <div style={{ fontSize: "0.82rem", fontWeight: 500, color: "var(--foreground)", marginBottom: "0.2rem" }}>
+                {ctxName}
+              </div>
+            )}
             <div style={{ fontSize: "0.82rem", color: "var(--muted-fg)", lineHeight: 1.5 }}>
               {hasCtx
                 ? "A workspace-level CTX is attached. Pipeline runs inherit this CTX by default; you can override per-run."
@@ -545,18 +686,186 @@ function ContextSection({ workflowId, hasCtx }: { workflowId: string; hasCtx: bo
             </div>
           </div>
         </div>
-        <button style={{
-          background: "var(--muted)", border: "1px solid var(--border)",
-          borderRadius: "7px", padding: "0.4rem 0.875rem",
-          fontSize: "0.8rem", fontWeight: 500, color: "var(--foreground)",
-          cursor: "pointer",
-        }}>
+        <button
+          onClick={() => setOpen(true)}
+          style={{
+            background: "var(--muted)", border: "1px solid var(--border)",
+            borderRadius: "7px", padding: "0.4rem 0.875rem",
+            fontSize: "0.8rem", fontWeight: 500, color: "var(--foreground)",
+            cursor: "pointer", transition: "background 0.12s",
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--border)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--muted)"; }}
+        >
           {hasCtx ? "Replace CTX" : "Attach CTX"}
         </button>
       </div>
+
       <p style={{ fontSize: "0.75rem", color: "var(--muted-fg)", marginTop: "1rem", lineHeight: 1.6 }}>
         Pipeline-level technical CTX overrides the workspace CTX for that specific run.
       </p>
+
+      {/* ── Attach / Replace Dialog ── */}
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent style={{ maxWidth: "520px" }}>
+          <DialogHeader>
+            <DialogTitle style={{ fontSize: "1.05rem" }}>
+              {hasCtx ? "Replace Workspace CTX" : "Attach Workspace CTX"}
+            </DialogTitle>
+            <p style={{ fontSize: "0.82rem", color: "var(--muted-fg)", marginTop: "0.25rem" }}>
+              All pipeline runs in this workspace will inherit this CTX by default.
+            </p>
+          </DialogHeader>
+
+          {/* Mode toggle — mutually exclusive */}
+          <div style={{
+            display: "flex", gap: "0.375rem",
+            background: "var(--muted)", borderRadius: "8px", padding: "0.25rem",
+          }}>
+            {(["cortx", "upload"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                style={{
+                  flex: 1, padding: "0.4rem 0", borderRadius: "6px",
+                  border: "none", cursor: "pointer",
+                  fontSize: "0.82rem", fontWeight: 500,
+                  background: mode === m ? "var(--paper)" : "transparent",
+                  color: mode === m ? "var(--foreground)" : "var(--muted-fg)",
+                  boxShadow: mode === m ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                  transition: "all 0.12s",
+                }}
+              >
+                {m === "cortx" ? "From Cortx" : "Upload file"}
+              </button>
+            ))}
+          </div>
+
+          {/* ── Cortx mode ── */}
+          {mode === "cortx" && (
+            <div style={{ minHeight: "200px" }}>
+              {cortxLoading ? (
+                <div style={{ display: "flex", justifyContent: "center", paddingTop: "3rem" }}>
+                  <Loader2 className="animate-spin h-5 w-5" style={{ color: "var(--muted-fg)" }} />
+                </div>
+              ) : cortxError ? (
+                <div style={{ textAlign: "center", padding: "2rem 1rem" }}>
+                  <p style={{ fontSize: "0.82rem", color: "var(--muted-fg)" }}>
+                    {cortxError === "Cortx unavailable"
+                      ? "Cortx is not connected. Check your CORTX_API_KEY or switch to Upload file."
+                      : cortxError}
+                  </p>
+                </div>
+              ) : cortxContexts.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "2rem 1rem" }}>
+                  <p style={{ fontSize: "0.82rem", color: "var(--muted-fg)" }}>
+                    No Cortx contexts found. Create one in Cortx first, or switch to Upload file.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-1.5" style={{ maxHeight: "260px", overflowY: "auto" }}>
+                  {cortxContexts.map((ctx) => (
+                    <button
+                      key={ctx.id}
+                      onClick={() => setSelectedCortxId(ctx.id)}
+                      style={{
+                        width: "100%", textAlign: "left",
+                        padding: "0.625rem 0.875rem", borderRadius: "8px",
+                        border: `1.5px solid ${selectedCortxId === ctx.id ? "var(--coral)" : "var(--border)"}`,
+                        background: selectedCortxId === ctx.id ? "var(--coral-soft)" : "var(--paper)",
+                        cursor: "pointer", transition: "border-color 0.12s",
+                      }}
+                    >
+                      <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground)" }}>
+                        {ctx.title}
+                      </div>
+                      {ctx.description && (
+                        <div style={{
+                          fontSize: "0.78rem", color: "var(--muted-fg)", marginTop: "0.1rem",
+                          overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis",
+                        }}>
+                          {ctx.description}
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Upload mode ── */}
+          {mode === "upload" && (
+            <div className="space-y-3" style={{ minHeight: "200px" }}>
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                style={{
+                  border: `2px dashed ${uploadFile ? "var(--tier-working)" : "var(--border)"}`,
+                  borderRadius: "10px", padding: "1.5rem",
+                  textAlign: "center", cursor: "pointer",
+                  background: uploadFile ? "var(--tier-working-soft)" : "transparent",
+                  transition: "all 0.15s",
+                }}
+              >
+                {uploadFile ? (
+                  <>
+                    <CheckCircle2 style={{ width: "1.25rem", height: "1.25rem", color: "var(--tier-working)", margin: "0 auto 0.4rem" }} />
+                    <p style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--foreground)" }}>
+                      {uploadFile.name}
+                    </p>
+                    <p style={{ fontSize: "0.75rem", color: "var(--muted-fg)" }}>Click to replace</p>
+                  </>
+                ) : (
+                  <>
+                    <FileUp style={{ width: "1.25rem", height: "1.25rem", color: "var(--muted-fg)", margin: "0 auto 0.4rem" }} />
+                    <p style={{ fontSize: "0.85rem", fontWeight: 500, color: "var(--foreground)" }}>
+                      Click to browse
+                    </p>
+                    <p style={{ fontSize: "0.75rem", color: "var(--muted-fg)" }}>.ctx · .txt · .md · .json</p>
+                  </>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".ctx,.txt,.md,.json"
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      setUploadFile(f);
+                      setUploadName(f.name.replace(/\.[^.]+$/, ""));
+                    }
+                  }}
+                />
+              </div>
+
+              {uploadFile && (
+                <div className="space-y-1.5">
+                  <Label style={{ fontSize: "0.82rem" }}>CTX name</Label>
+                  <Input
+                    value={uploadName}
+                    onChange={(e) => setUploadName(e.target.value)}
+                    placeholder="Name for this CTX"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Confirm button */}
+          <Button
+            onClick={handleAttach}
+            disabled={!canAttach || attaching}
+            className="w-full"
+            style={canAttach ? { background: "var(--coral)", color: "#fff", border: "none", fontWeight: 500 } : { fontWeight: 500 }}
+          >
+            {attaching
+              ? <><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Attaching…</>
+              : "Attach CTX"
+            }
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -759,7 +1068,11 @@ export function WorkspaceDetailView({ workflow: initialWorkflow }: WorkspaceDeta
             <DocumentsTab ref={docsRef} workflowId={workflow.id} />
           )}
           {activeSection === "context" && (
-            <ContextSection workflowId={workflow.id} hasCtx={workflow.workspace_ctx_id != null} />
+            <ContextSection
+              workflowId={workflow.id}
+              workspacCtxId={workflow.workspace_ctx_id}
+              onCtxChanged={(ctxId) => setWorkflow((prev) => ({ ...prev, workspace_ctx_id: ctxId }))}
+            />
           )}
           {activeSection === "settings" && (
             <SettingsSection
