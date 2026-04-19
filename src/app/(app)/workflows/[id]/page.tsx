@@ -1,10 +1,9 @@
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getTemplate, getDefaultTemplate } from "@/lib/pipeline/templates";
-import { PipelinePageClient } from "@/components/pipeline/pipeline-page-client";
+import { WorkspaceDetailView } from "@/components/workspace/workspace-detail-view";
 
-export default async function WorkflowPage({
+export default async function WorkspacePage({
   params,
 }: {
   params: Promise<{ id: string }>;
@@ -16,32 +15,17 @@ export default async function WorkflowPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect("/login");
-  }
+  if (!user) redirect("/login");
 
   const admin = createAdminClient();
 
   const { data: workflow } = await admin
     .from("workflows")
-    .select("*")
+    .select("id, name, type, description, workspace_ctx_id, template_id, created_at, updated_at")
     .eq("id", id)
     .single();
 
-  if (!workflow) {
-    notFound();
-  }
+  if (!workflow) notFound();
 
-  // Resolve pipeline template
-  const template = workflow.template_id
-    ? getTemplate(workflow.template_id)
-    : null;
-
-  return (
-    <PipelinePageClient
-      workflowId={workflow.id}
-      workflowName={workflow.name}
-      template={template ?? getDefaultTemplate()}
-    />
-  );
+  return <WorkspaceDetailView workflow={workflow} />;
 }

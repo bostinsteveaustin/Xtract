@@ -1,13 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FolderOpen } from "lucide-react";
+import { FileText, Shield, Brain, Layers } from "lucide-react";
 import { CreateWorkflowDialog } from "./create-workflow-dialog";
+import type { WorkspaceType } from "@/lib/pipeline/workspace-registry";
 
 interface Workflow {
   id: string;
   name: string;
   template_id: string | null;
+  type: string | null;
+  description: string | null;
   status: string | null;
   created_at: string;
   updated_at: string;
@@ -23,12 +26,50 @@ function formatDate(iso: string): string {
   });
 }
 
-function templateLabel(templateId: string | null): string {
-  if (!templateId) return "Custom pipeline";
-  if (templateId === "contract-extraction-v1") return "Contract Extraction";
-  if (templateId === "ontology-v1") return "Ontology Generation";
-  return templateId;
+// ─── Type badge helpers ───────────────────────────────────────────────────────
+
+const TYPE_LABEL: Record<string, string> = {
+  contract:   "Contract",
+  regulatory: "Regulatory",
+  knowhow:    "Knowhow",
+  custom:     "Custom",
+};
+
+const TYPE_COLOR: Record<string, string> = {
+  contract:   "var(--coral)",
+  regulatory: "var(--tier-authoritative)",
+  knowhow:    "var(--tier-working)",
+  custom:     "var(--muted-fg)",
+};
+
+function TypeBadge({ type }: { type: string | null }) {
+  const t = (type ?? "custom") as WorkspaceType;
+  const label = TYPE_LABEL[t] ?? "Custom";
+  const color = TYPE_COLOR[t] ?? TYPE_COLOR.custom;
+
+  const Icon = {
+    contract:   FileText,
+    regulatory: Shield,
+    knowhow:    Brain,
+    custom:     Layers,
+  }[t] ?? Layers;
+
+  return (
+    <span
+      style={{
+        display: "inline-flex", alignItems: "center", gap: "0.3rem",
+        padding: "0.18rem 0.55rem", borderRadius: "999px",
+        background: `${color}12`, color,
+        fontSize: "0.72rem", fontWeight: 500, letterSpacing: "0.01em",
+      }}
+    >
+      <Icon style={{ width: "0.7rem", height: "0.7rem" }} />
+      {label}
+    </span>
+  );
 }
+
+// ─── Grid ─────────────────────────────────────────────────────────────────────
 
 export function WorkspacesGrid({ workflows }: WorkspacesGridProps) {
   const router = useRouter();
@@ -42,7 +83,7 @@ export function WorkspacesGrid({ workflows }: WorkspacesGridProps) {
             Workspaces
           </h1>
           <p style={{ fontSize: "0.85rem", color: "var(--muted-fg)", marginTop: "0.25rem" }}>
-            {workflows.length} pipeline {workflows.length === 1 ? "run" : "runs"}
+            {workflows.length} engagement {workflows.length === 1 ? "workspace" : "workspaces"}
           </p>
         </div>
         <CreateWorkflowDialog variant="page" />
@@ -56,7 +97,7 @@ export function WorkspacesGrid({ workflows }: WorkspacesGridProps) {
             background: "var(--muted)", display: "flex", alignItems: "center",
             justifyContent: "center", margin: "0 auto 1rem",
           }}>
-            <FolderOpen className="h-6 w-6" style={{ color: "var(--muted-fg)" }} />
+            <Layers className="h-6 w-6" style={{ color: "var(--muted-fg)" }} />
           </div>
           <h2 style={{ fontSize: "1.1rem", fontWeight: 600, color: "var(--foreground)", marginBottom: "0.5rem" }}>
             No workspaces yet
@@ -69,7 +110,7 @@ export function WorkspacesGrid({ workflows }: WorkspacesGridProps) {
       ) : (
         <div style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
           gap: "1.25rem",
         }}>
           {workflows.map((w) => (
@@ -79,7 +120,8 @@ export function WorkspacesGrid({ workflows }: WorkspacesGridProps) {
               style={{
                 background: "var(--paper)", border: "1px solid var(--border)",
                 borderRadius: "12px", padding: "1.25rem 1.5rem",
-                textAlign: "left", cursor: "pointer", transition: "box-shadow 0.15s, border-color 0.15s",
+                textAlign: "left", cursor: "pointer",
+                transition: "box-shadow 0.15s, border-color 0.15s",
                 display: "flex", flexDirection: "column", gap: "0.75rem",
               }}
               onMouseEnter={(e) => {
@@ -91,33 +133,28 @@ export function WorkspacesGrid({ workflows }: WorkspacesGridProps) {
                 (e.currentTarget as HTMLElement).style.borderColor = "var(--border)";
               }}
             >
-              {/* Icon + name */}
-              <div style={{ display: "flex", alignItems: "flex-start", gap: "0.875rem" }}>
-                <div style={{
-                  width: "2.25rem", height: "2.25rem", borderRadius: "8px",
-                  background: "var(--muted)", display: "flex", alignItems: "center",
-                  justifyContent: "center", flexShrink: 0,
-                }}>
-                  <FolderOpen className="h-4 w-4" style={{ color: "var(--muted-fg)" }} />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: "0.95rem", fontWeight: 600, color: "var(--foreground)",
-                    lineHeight: 1.3, marginBottom: "0.25rem",
-                  }}>
-                    {w.name}
-                  </div>
-                  <div style={{ fontSize: "0.78rem", color: "var(--muted-fg)", lineHeight: 1.4 }}>
-                    {templateLabel(w.template_id)}
-                  </div>
-                </div>
+              {/* Name */}
+              <div style={{
+                fontSize: "0.95rem", fontWeight: 600, color: "var(--foreground)",
+                lineHeight: 1.3,
+              }}>
+                {w.name}
               </div>
 
-              {/* Meta */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: "0.75rem", color: "var(--muted-fg)" }}>
-                  {templateLabel(w.template_id)}
-                </span>
+              {/* Description */}
+              {w.description && (
+                <div style={{
+                  fontSize: "0.8rem", color: "var(--muted-fg)", lineHeight: 1.45,
+                  display: "-webkit-box", WebkitLineClamp: 2,
+                  WebkitBoxOrient: "vertical", overflow: "hidden",
+                }}>
+                  {w.description}
+                </div>
+              )}
+
+              {/* Footer: type badge + date */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "auto" }}>
+                <TypeBadge type={w.type} />
                 <span style={{ fontSize: "0.75rem", color: "var(--muted-fg)" }}>
                   {formatDate(w.updated_at)}
                 </span>

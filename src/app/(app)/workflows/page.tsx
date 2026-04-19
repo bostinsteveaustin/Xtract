@@ -19,7 +19,7 @@ export default async function WorkspacesPage() {
 
   const { data: workflows } = await admin
     .from("workflows")
-    .select("id, name, template_id, status, created_at, updated_at")
+    .select("id, name, template_id, type, description, status, created_at, updated_at")
     .eq("workspace_id", profile.workspace_id)
     .order("updated_at", { ascending: false });
 

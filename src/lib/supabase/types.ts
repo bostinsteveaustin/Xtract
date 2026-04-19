@@ -170,6 +170,11 @@ export interface Database {
           template_id: string | null;
           node_graph: Json;
           status: string;
+          // ── migration-009: workspace architecture refactor ──
+          type: string;
+          description: string | null;
+          workspace_ctx_id: string | null;
+          org_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -180,6 +185,10 @@ export interface Database {
           template_id?: string | null;
           node_graph: Json;
           status?: string;
+          type?: string;
+          description?: string | null;
+          workspace_ctx_id?: string | null;
+          org_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -190,6 +199,10 @@ export interface Database {
           template_id?: string | null;
           node_graph?: Json;
           status?: string;
+          type?: string;
+          description?: string | null;
+          workspace_ctx_id?: string | null;
+          org_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -212,6 +225,12 @@ export interface Database {
           completion_tokens: number;
           step_token_log: Json;
           ctx_content: string | null;
+          // ── migration-009: pipeline run fields ──
+          pipeline_type: string | null;
+          config_pattern: string | null;
+          technical_ctx_id: string | null;
+          credits_debited: number;
+          output_envelope_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -230,6 +249,11 @@ export interface Database {
           completion_tokens?: number;
           step_token_log?: Json;
           ctx_content?: string | null;
+          pipeline_type?: string | null;
+          config_pattern?: string | null;
+          technical_ctx_id?: string | null;
+          credits_debited?: number;
+          output_envelope_id?: string | null;
           created_at?: string;
         };
         Update: {
@@ -248,7 +272,63 @@ export interface Database {
           completion_tokens?: number;
           step_token_log?: Json;
           ctx_content?: string | null;
+          pipeline_type?: string | null;
+          config_pattern?: string | null;
+          technical_ctx_id?: string | null;
+          credits_debited?: number;
+          output_envelope_id?: string | null;
           created_at?: string;
+        };
+        Relationships: [];
+      };
+      workflow_source_documents: {
+        Row: {
+          id: string;
+          workflow_id: string;
+          filename: string;
+          storage_path: string;
+          mime_type: string | null;
+          file_size: number | null;
+          uploaded_by: string | null;
+          uploaded_at: string;
+          metadata: Json;
+        };
+        Insert: {
+          id?: string;
+          workflow_id: string;
+          filename: string;
+          storage_path: string;
+          mime_type?: string | null;
+          file_size?: number | null;
+          uploaded_by?: string | null;
+          uploaded_at?: string;
+          metadata?: Json;
+        };
+        Update: {
+          id?: string;
+          workflow_id?: string;
+          filename?: string;
+          storage_path?: string;
+          mime_type?: string | null;
+          file_size?: number | null;
+          uploaded_by?: string | null;
+          uploaded_at?: string;
+          metadata?: Json;
+        };
+        Relationships: [];
+      };
+      pipeline_run_documents: {
+        Row: {
+          pipeline_run_id: string;
+          source_document_id: string;
+        };
+        Insert: {
+          pipeline_run_id: string;
+          source_document_id: string;
+        };
+        Update: {
+          pipeline_run_id?: string;
+          source_document_id?: string;
         };
         Relationships: [];
       };

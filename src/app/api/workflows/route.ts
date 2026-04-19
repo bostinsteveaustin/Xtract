@@ -30,7 +30,7 @@ export async function GET() {
     const admin = createAdminClient();
     const { data: workflows } = await admin
       .from("workflows")
-      .select("id, name, status, template_id, created_at, updated_at")
+      .select("id, name, status, template_id, type, description, created_at, updated_at")
       .eq("workspace_id", profile.workspace_id)
       .order("updated_at", { ascending: false });
 
@@ -66,7 +66,12 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, templateId } = body as { name?: string; templateId?: string };
+    const { name, templateId, type, description } = body as {
+      name?: string;
+      templateId?: string;
+      type?: string;
+      description?: string;
+    };
 
     const template = templateId
       ? getTemplate(templateId) ?? getDefaultTemplate()
@@ -77,8 +82,10 @@ export async function POST(request: Request) {
       .from("workflows")
       .insert({
         workspace_id: profile.workspace_id,
-        name: name ?? "Untitled Pipeline",
+        name: name ?? "Untitled Workspace",
         template_id: template.templateId,
+        type: type ?? "custom",
+        description: description ?? null,
         node_graph: JSON.parse(JSON.stringify(template)),
       })
       .select()

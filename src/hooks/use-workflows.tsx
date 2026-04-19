@@ -9,11 +9,13 @@ import {
   type ReactNode,
 } from "react";
 
-interface WorkflowSummary {
+export interface WorkflowSummary {
   id: string;
   name: string;
   status: string;
   template_id: string | null;
+  type: string | null;
+  description: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -21,8 +23,15 @@ interface WorkflowSummary {
 interface WorkflowsContextValue {
   workflows: WorkflowSummary[];
   isLoading: boolean;
-  createWorkflow: (name: string, templateId?: string) => Promise<WorkflowSummary | null>;
+  createWorkflow: (
+    name: string,
+    options?: { templateId?: string; type?: string; description?: string }
+  ) => Promise<WorkflowSummary | null>;
   renameWorkflow: (id: string, name: string) => Promise<void>;
+  updateWorkflow: (
+    id: string,
+    updates: { name?: string; description?: string; workspace_ctx_id?: string | null }
+  ) => Promise<void>;
   deleteWorkflow: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -51,12 +60,20 @@ export function WorkflowsProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const createWorkflow = useCallback(
-    async (name: string, templateId?: string): Promise<WorkflowSummary | null> => {
+    async (
+      name: string,
+      options?: { templateId?: string; type?: string; description?: string }
+    ): Promise<WorkflowSummary | null> => {
       try {
         const res = await fetch("/api/workflows", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, templateId }),
+          body: JSON.stringify({
+            name,
+            templateId: options?.templateId,
+            type: options?.type,
+            description: options?.description,
+          }),
         });
         if (!res.ok) return null;
         const data = await res.json();
@@ -70,17 +87,46 @@ export function WorkflowsProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const renameWorkflow = useCallback(
-    async (id: string, name: string) => {
+  const renameWorkflow = useCallback(async (id: string, name: string) => {
+    try {
+      const res = await fetch(`/api/workflows/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) return;
+      setWorkflows((prev) =>
+        prev.map((w) => (w.id === id ? { ...w, name } : w))
+      );
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const updateWorkflow = useCallback(
+    async (
+      id: string,
+      updates: { name?: string; description?: string; workspace_ctx_id?: string | null }
+    ) => {
       try {
         const res = await fetch(`/api/workflows/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name }),
+          body: JSON.stringify(updates),
         });
         if (!res.ok) return;
         setWorkflows((prev) =>
-          prev.map((w) => (w.id === id ? { ...w, name } : w))
+          prev.map((w) =>
+            w.id === id
+              ? {
+                  ...w,
+                  ...(updates.name !== undefined && { name: updates.name }),
+                  ...(updates.description !== undefined && {
+                    description: updates.description,
+                  }),
+                }
+              : w
+          )
         );
       } catch {
         // ignore
@@ -89,23 +135,28 @@ export function WorkflowsProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const deleteWorkflow = useCallback(
-    async (id: string) => {
-      try {
-        const res = await fetch(`/api/workflows/${id}`, {
-          method: "DELETE",
-        });
-        if (!res.ok) return;
-        setWorkflows((prev) => prev.filter((w) => w.id !== id));
-      } catch {
-        // ignore
-      }
-    },
-    []
-  );
+  const deleteWorkflow = useCallback(async (id: string) => {
+    try {
+      const res = await fetch(`/api/workflows/${id}`, { method: "DELETE" });
+      if (!res.ok) return;
+      setWorkflows((prev) => prev.filter((w) => w.id !== id));
+    } catch {
+      // ignore
+    }
+  }, []);
 
   return (
-    <WorkflowsContext value={{ workflows, isLoading, createWorkflow, renameWorkflow, deleteWorkflow, refresh }}>
+    <WorkflowsContext
+      value={{
+        workflows,
+        isLoading,
+        createWorkflow,
+        renameWorkflow,
+        updateWorkflow,
+        deleteWorkflow,
+        refresh,
+      }}
+    >
       {children}
     </WorkflowsContext>
   );

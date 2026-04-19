@@ -20,19 +20,30 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { name } = body as { name?: string };
+    const { name, description, workspace_ctx_id } = body as {
+      name?: string;
+      description?: string;
+      workspace_ctx_id?: string | null;
+    };
 
-    if (!name?.trim()) {
+    if (name !== undefined && !name?.trim()) {
       return NextResponse.json(
-        { error: "Name is required" },
+        { error: "Name cannot be empty" },
         { status: 400 }
       );
     }
 
+    // Build update object from supplied fields only
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+    if (name !== undefined) updates.name = name.trim();
+    if (description !== undefined) updates.description = description;
+    if (workspace_ctx_id !== undefined) updates.workspace_ctx_id = workspace_ctx_id;
+
     const supabase = createAdminClient();
     const { data: workflow, error } = await supabase
       .from("workflows")
-      .update({ name: name.trim(), updated_at: new Date().toISOString() })
+      .update(updates)
       .eq("id", id)
       .select()
       .single();
