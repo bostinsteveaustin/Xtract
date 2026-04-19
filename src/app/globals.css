@@ -1,127 +1,195 @@
+/* ════════════════════════════════════════════════════════════
+   Xtract — BridgingX Design System v1.0
+   Derived from BridgingX Brand System v1.0.0
+   Single-direction light workbench. No dark mode.
+   ════════════════════════════════════════════════════════════ */
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
-@theme inline {
-  --color-pipeline-navy: var(--pipeline-navy);
-  --color-pipeline-pink: var(--pipeline-pink);
-  --color-pipeline-surface: var(--pipeline-surface);
-  --color-pipeline-connector: var(--pipeline-connector);
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
-  --radius-4xl: calc(var(--radius) + 16px);
+/* ── Fraunces variable font ── LOGIN / LANDING ONLY ── */
+@font-face {
+  font-family: 'Fraunces';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/Fraunces-VariableFont_SOFT_WONK_opsz_wght.ttf') format('truetype-variations');
+}
+@font-face {
+  font-family: 'Fraunces';
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/Fraunces-Italic-VariableFont_SOFT_WONK_opsz_wght.ttf') format('truetype-variations');
 }
 
 :root {
-  --pipeline-navy: #344654;
-  --pipeline-pink: #FB3970;
-  --pipeline-surface: #F1F5F9;
-  --pipeline-connector: #E2E8F0;
+  /* ── CANVAS SURFACES ── */
+  --background:       #FAF7F0;   /* warm canvas — primary workspace surface */
+  --foreground:       #1A2332;   /* deep-steel — canonical text */
+  --paper:            #FFFFFF;   /* elevated cards, inputs, modals */
+
+  /* ── SIDEBAR ── */
+  --sidebar-bg:       #F3EEE2;
+  --sidebar-fg:       #1A2332;
+  --sidebar-muted:    #64748B;
+  --sidebar-border:   rgba(26, 35, 50, 0.08);
+  --sidebar-hover:    rgba(26, 35, 50, 0.04);
+  --sidebar-active:   rgba(251, 57, 112, 0.08);
+
+  /* ── BORDERS & MUTED ── */
+  --border:           rgba(26, 35, 50, 0.08);
+  --border-strong:    rgba(26, 35, 50, 0.14);
+  --muted:            #F1EDE1;
+  --muted-fg:         #64748B;
+  --graphite:         #475569;
+
+  /* ── VOID (login brand panel only) ── */
+  --void:             #0B0E14;
+  --plate:            #161B25;
+  --chamber:          #1E2530;
+
+  /* ── BRAND ACCENT ── */
+  --coral:            #FB3970;
+  --coral-hover:      #E42E62;
+  --coral-soft:       rgba(251, 57, 112, 0.08);
+  --coral-glow:       rgba(251, 57, 112, 0.10);
+
+  /* ── TIER COLOURS ── */
+  --tier-authoritative:       #1E4FC7;
+  --tier-authoritative-soft:  rgba(30, 79, 199, 0.10);
+  --tier-institutional:       #B8690A;
+  --tier-institutional-soft:  rgba(184, 105, 10, 0.10);
+  --tier-working:             #0B7C4E;
+  --tier-working-soft:        rgba(11, 124, 78, 0.10);
+
+  /* ── TYPOGRAPHY ── */
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-sans:    var(--font-geist-sans, 'DM Sans', -apple-system, system-ui, sans-serif);
+  --font-mono:    var(--font-geist-mono, ui-monospace, Menlo, monospace);
+
+  /* ── RADIUS ── */
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+
+  /* ── SHADCN TOKEN MAPPINGS ──
+     Keep shadcn component names working, mapped to BridgingX values. */
+  --card:                    #FFFFFF;
+  --card-foreground:         #1A2332;
+  --popover:                 #FFFFFF;
+  --popover-foreground:      #1A2332;
+  --primary:                 #FB3970;   /* coral = primary CTA */
+  --primary-foreground:      #FFFFFF;
+  --secondary:               #F1EDE1;
+  --secondary-foreground:    #1A2332;
+  --accent:                  rgba(251, 57, 112, 0.08);
+  --accent-foreground:       #FB3970;
+  --destructive:             #DC2626;
+  --input:                   rgba(26, 35, 50, 0.10);
+  --ring:                    rgba(251, 57, 112, 0.35);
+  --muted-foreground:        #64748B;
+
+  /* shadcn sidebar component tokens */
+  --sidebar:                      #F3EEE2;
+  --sidebar-foreground:           #1A2332;
+  --sidebar-primary:              #FB3970;
+  --sidebar-primary-foreground:   #FFFFFF;
+  --sidebar-accent:               rgba(251, 57, 112, 0.08);
+  --sidebar-accent-foreground:    #FB3970;
+  --sidebar-ring:                 rgba(251, 57, 112, 0.35);
+
+  /* ── PIPELINE TOKENS (kept for existing pipeline components) ── */
+  --pipeline-navy:        #344654;   /* retained — Phase 5 will replace with coral */
+  --pipeline-pink:        #FB3970;   /* = coral */
+  --pipeline-surface:     #F3EEE2;   /* updated to BridgingX muted */
+  --pipeline-connector:   rgba(26, 35, 50, 0.08);
+
+  /* chart tokens (shadcn) */
+  --chart-1: #FB3970;
+  --chart-2: #1E4FC7;
+  --chart-3: #B8690A;
+  --chart-4: #0B7C4E;
+  --chart-5: #475569;
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+@theme inline {
+  /* ── BridgingX surface tokens ── */
+  --color-background:           var(--background);
+  --color-foreground:           var(--foreground);
+  --color-paper:                var(--paper);
+  --color-sidebar-bg:           var(--sidebar-bg);
+  --color-sidebar-fg:           var(--sidebar-fg);
+  --color-sidebar-muted:        var(--sidebar-muted);
+  --color-graphite:             var(--graphite);
+  --color-void:                 var(--void);
+  --color-plate:                var(--plate);
+
+  /* ── Brand ── */
+  --color-coral:                var(--coral);
+  --color-coral-hover:          var(--coral-hover);
+  --color-coral-soft:           var(--coral-soft);
+  --color-coral-glow:           var(--coral-glow);
+
+  /* ── Tiers ── */
+  --color-tier-authoritative:       var(--tier-authoritative);
+  --color-tier-authoritative-soft:  var(--tier-authoritative-soft);
+  --color-tier-institutional:       var(--tier-institutional);
+  --color-tier-institutional-soft:  var(--tier-institutional-soft);
+  --color-tier-working:             var(--tier-working);
+  --color-tier-working-soft:        var(--tier-working-soft);
+
+  /* ── shadcn token pass-throughs ── */
+  --color-card:                 var(--card);
+  --color-card-foreground:      var(--card-foreground);
+  --color-popover:              var(--popover);
+  --color-popover-foreground:   var(--popover-foreground);
+  --color-primary:              var(--primary);
+  --color-primary-foreground:   var(--primary-foreground);
+  --color-secondary:            var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted:                var(--muted);
+  --color-muted-foreground:     var(--muted-foreground);
+  --color-accent:               var(--accent);
+  --color-accent-foreground:    var(--accent-foreground);
+  --color-destructive:          var(--destructive);
+  --color-border:               var(--border);
+  --color-input:                var(--input);
+  --color-ring:                 var(--ring);
+  --color-sidebar:              var(--sidebar);
+  --color-sidebar-foreground:   var(--sidebar-foreground);
+  --color-sidebar-primary:      var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:       var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border:       var(--sidebar-border);
+  --color-sidebar-ring:         var(--sidebar-ring);
+  --color-chart-1:              var(--chart-1);
+  --color-chart-2:              var(--chart-2);
+  --color-chart-3:              var(--chart-3);
+  --color-chart-4:              var(--chart-4);
+  --color-chart-5:              var(--chart-5);
+
+  /* ── Pipeline tokens ── */
+  --color-pipeline-navy:        var(--pipeline-navy);
+  --color-pipeline-pink:        var(--pipeline-pink);
+  --color-pipeline-surface:     var(--pipeline-surface);
+  --color-pipeline-connector:   var(--pipeline-connector);
+
+  /* ── Typography ── */
+  --font-sans:    var(--font-sans);
+  --font-mono:    var(--font-mono);
+  --font-display: var(--font-display);
+
+  /* ── Radius ── */
+  --radius-sm:  calc(var(--radius) - 4px);
+  --radius-md:  calc(var(--radius) - 2px);
+  --radius-lg:  var(--radius);
+  --radius-xl:  calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
 }
 
 @layer base {
@@ -129,6 +197,80 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
   }
 }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(26, 35, 50, 0.18); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(26, 35, 50, 0.32); }
+
+/* ── Display type — ONLY on login / landing ── */
+.font-display {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+.font-display em,
+.accent-italic {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--coral);
+  font-synthesis: none;
+}
+
+/* ── Tier utility classes ── */
+.tier-authoritative-bg  { background: var(--tier-authoritative-soft); color: var(--tier-authoritative); }
+.tier-institutional-bg  { background: var(--tier-institutional-soft); color: var(--tier-institutional); }
+.tier-working-bg        { background: var(--tier-working-soft);        color: var(--tier-working); }
+
+/* ── BridgingX button utilities ── */
+.btn-coral {
+  background: var(--coral);
+  color: #FFFFFF;
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-coral:hover { background: var(--coral-hover); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--foreground);
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-ghost:hover { background: var(--sidebar-hover); }
+
+/* ── Help trigger (coral circular ?) ── */
+.nx-help-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--coral-soft);
+  color: var(--coral);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 0.82rem;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.nx-help-trigger:hover { background: var(--coral); color: var(--paper); }
