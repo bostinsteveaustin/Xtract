@@ -2,10 +2,9 @@
  * Post-completion run debit — E-08 §4.7.
  *
  * Called from the extract route's finalize block. Writes a single ledger
- * entry at entry_type='run_debit' with amount = -cost, and dual-writes the
- * cost onto workflow_runs for the legacy-column back-compat window (both
- * `credit_cost` NUMERIC and `credits_debited` INTEGER — the latter drops in
- * Phase 6).
+ * entry at entry_type='run_debit' with amount = -cost, and mirrors the cost
+ * onto `workflow_runs.credit_cost` for cheap per-run reporting without
+ * joining the ledger.
  *
  * Idempotency is enforced in SQL: the unique partial index on
  * credit_ledger(organization_id, run_id) WHERE entry_type='run_debit'
@@ -48,10 +47,7 @@ export async function debitRun(
   if (args.cost <= 0) {
     await admin
       .from("workflow_runs")
-      .update({
-        credit_cost: 0,
-        credits_debited: 0,
-      })
+      .update({ credit_cost: 0 })
       .eq("id", args.runId);
     return null;
   }
@@ -84,15 +80,10 @@ export async function debitRun(
     throw new Error(`debitRun failed: ${error.message}`);
   }
 
-  // Mirror the cost onto the run row for reporting + legacy-column compat.
-  // Integer truncation for credits_debited is intentional — the column drops
-  // in Phase 6 and its precision is no longer load-bearing.
+  // Mirror the cost onto the run row for cheap per-run reporting.
   await admin
     .from("workflow_runs")
-    .update({
-      credit_cost: args.cost,
-      credits_debited: Math.round(args.cost),
-    })
+    .update({ credit_cost: args.cost })
     .eq("id", args.runId);
 
   return { ledgerEntryId: data as string, created: true };

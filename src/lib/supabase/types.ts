@@ -249,7 +249,6 @@ export interface Database {
           pipeline_type: string | null;
           config_pattern: string | null;
           technical_ctx_id: string | null;
-          credits_debited: number;
           output_envelope_id: string | null;
           // ── migration-017: org re-key ──
           organization_id: string;
@@ -279,7 +278,6 @@ export interface Database {
           pipeline_type?: string | null;
           config_pattern?: string | null;
           technical_ctx_id?: string | null;
-          credits_debited?: number;
           output_envelope_id?: string | null;
           organization_id?: string;
           rig_id?: string | null;
@@ -307,7 +305,6 @@ export interface Database {
           pipeline_type?: string | null;
           config_pattern?: string | null;
           technical_ctx_id?: string | null;
-          credits_debited?: number;
           output_envelope_id?: string | null;
           organization_id?: string;
           rig_id?: string | null;
