@@ -40,6 +40,8 @@ export interface Database {
           display_name: string | null;
           workspace_id: string | null;
           avatar_url: string | null;
+          platform_role: "none" | "platform_support" | "platform_admin";
+          mfa_required: boolean;
           created_at: string;
         };
         Insert: {
@@ -48,6 +50,8 @@ export interface Database {
           display_name?: string | null;
           workspace_id?: string | null;
           avatar_url?: string | null;
+          platform_role?: "none" | "platform_support" | "platform_admin";
+          mfa_required?: boolean;
           created_at?: string;
         };
         Update: {
@@ -56,6 +60,8 @@ export interface Database {
           display_name?: string | null;
           workspace_id?: string | null;
           avatar_url?: string | null;
+          platform_role?: "none" | "platform_support" | "platform_admin";
+          mfa_required?: boolean;
           created_at?: string;
         };
         Relationships: [];
@@ -523,6 +529,180 @@ export interface Database {
           confidence?: number;
           source?: string;
           description?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      // ─── E-08 Platform Foundations ────────────────────────────────────────
+      organizations: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          status: "active" | "suspended" | "archived";
+          billing_contact_user_id: string | null;
+          stripe_customer_id: string | null;
+          branding: Json | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          status?: "active" | "suspended" | "archived";
+          billing_contact_user_id?: string | null;
+          stripe_customer_id?: string | null;
+          branding?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          slug?: string;
+          status?: "active" | "suspended" | "archived";
+          billing_contact_user_id?: string | null;
+          stripe_customer_id?: string | null;
+          branding?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      memberships: {
+        Row: {
+          id: string;
+          user_id: string;
+          organization_id: string;
+          role: "org_admin" | "rig_manager" | "member";
+          capability_flags: Json;
+          status: "active" | "invited" | "suspended";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          organization_id: string;
+          role?: "org_admin" | "rig_manager" | "member";
+          capability_flags?: Json;
+          status?: "active" | "invited" | "suspended";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          organization_id?: string;
+          role?: "org_admin" | "rig_manager" | "member";
+          capability_flags?: Json;
+          status?: "active" | "invited" | "suspended";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      audit_log: {
+        Row: {
+          id: string;
+          acting_user_id: string | null;
+          acting_user_platform_role: string | null;
+          target_organization_id: string | null;
+          admin_context_flag: boolean;
+          action: string;
+          resource_type: string | null;
+          resource_id: string | null;
+          payload: Json | null;
+          ip_address: string | null;
+          user_agent: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          acting_user_id?: string | null;
+          acting_user_platform_role?: string | null;
+          target_organization_id?: string | null;
+          admin_context_flag?: boolean;
+          action: string;
+          resource_type?: string | null;
+          resource_id?: string | null;
+          payload?: Json | null;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          created_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
+      invite_tokens: {
+        Row: {
+          id: string;
+          organization_id: string;
+          email: string;
+          token: string;
+          invited_by_user_id: string;
+          role: "org_admin" | "rig_manager" | "member";
+          capability_flags: Json;
+          status: "pending" | "accepted" | "expired" | "revoked";
+          expires_at: string;
+          created_at: string;
+          accepted_at: string | null;
+          accepted_by_user_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          email: string;
+          token: string;
+          invited_by_user_id: string;
+          role?: "org_admin" | "rig_manager" | "member";
+          capability_flags?: Json;
+          status?: "pending" | "accepted" | "expired" | "revoked";
+          expires_at?: string;
+          created_at?: string;
+          accepted_at?: string | null;
+          accepted_by_user_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          email?: string;
+          token?: string;
+          invited_by_user_id?: string;
+          role?: "org_admin" | "rig_manager" | "member";
+          capability_flags?: Json;
+          status?: "pending" | "accepted" | "expired" | "revoked";
+          expires_at?: string;
+          created_at?: string;
+          accepted_at?: string | null;
+          accepted_by_user_id?: string | null;
+        };
+        Relationships: [];
+      };
+      workspace_memberships: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          organization_id: string;
+          user_id: string;
+          role: "workspace_owner" | "workspace_editor" | "workspace_viewer";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          organization_id: string;
+          user_id: string;
+          role?: "workspace_owner" | "workspace_editor" | "workspace_viewer";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          workspace_id?: string;
+          organization_id?: string;
+          user_id?: string;
+          role?: "workspace_owner" | "workspace_editor" | "workspace_viewer";
           created_at?: string;
         };
         Relationships: [];
