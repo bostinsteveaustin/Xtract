@@ -8,13 +8,21 @@ import { Card } from "@/components/ui/card";
  */
 export default async function AdminDashboard() {
   const admin = createAdminClient();
-  const [orgsRes, auditRes, platformRes] = await Promise.all([
+  const [orgsRes, auditRes, platformRes, rigsRes, entsRes] = await Promise.all([
     admin.from("organizations").select("id", { count: "exact", head: true }),
     admin.from("audit_log").select("id", { count: "exact", head: true }),
     admin
       .from("profiles")
       .select("id", { count: "exact", head: true })
       .neq("platform_role", "none"),
+    admin
+      .from("rigs")
+      .select("id", { count: "exact", head: true })
+      .eq("tier", "published"),
+    admin
+      .from("rig_entitlements")
+      .select("id", { count: "exact", head: true })
+      .is("revoked_at", null),
   ]);
 
   return (
@@ -29,9 +37,11 @@ export default async function AdminDashboard() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
         <StatCard label="Organisations" value={orgsRes.count ?? 0} />
-        <StatCard label="Platform role holders" value={platformRes.count ?? 0} />
+        <StatCard label="Platform roles" value={platformRes.count ?? 0} />
+        <StatCard label="Published Rigs" value={rigsRes.count ?? 0} />
+        <StatCard label="Active entitlements" value={entsRes.count ?? 0} />
         <StatCard label="Audit events" value={auditRes.count ?? 0} />
       </div>
 
@@ -50,19 +60,27 @@ export default async function AdminDashboard() {
           </li>
           <li>
             <Link
+              href="/admin/rigs"
+              className="text-[#0EA5A0] hover:underline"
+            >
+              Manage Published Rigs →
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/admin/entitlements"
+              className="text-[#0EA5A0] hover:underline"
+            >
+              Manage Rig entitlements →
+            </Link>
+          </li>
+          <li>
+            <Link
               href="/admin/audit"
               className="text-[#0EA5A0] hover:underline"
             >
               Review cross-tenant audit log →
             </Link>
-          </li>
-          <li className="text-slate-500">
-            <span>Rig management</span>{" "}
-            <span className="ml-2 text-xs italic">(Phase 2)</span>
-          </li>
-          <li className="text-slate-500">
-            <span>Entitlement management</span>{" "}
-            <span className="ml-2 text-xs italic">(Phase 2)</span>
           </li>
         </ul>
       </Card>

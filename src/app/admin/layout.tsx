@@ -88,6 +88,12 @@ export default async function AdminLayout({
             <Link href="/admin/organisations" className="hover:underline">
               Organisations
             </Link>
+            <Link href="/admin/rigs" className="hover:underline">
+              Rigs
+            </Link>
+            <Link href="/admin/entitlements" className="hover:underline">
+              Entitlements
+            </Link>
             <Link href="/admin/audit" className="hover:underline">
               Audit log
             </Link>

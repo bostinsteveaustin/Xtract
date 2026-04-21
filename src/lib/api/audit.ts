@@ -60,6 +60,17 @@ export const auditActions = {
   // Platform role
   PLATFORM_ROLE_ASSIGNED: "platform_role.assigned",
   PLATFORM_ROLE_REMOVED: "platform_role.removed",
+
+  // Rigs (E-08 §4)
+  RIG_CREATED: "rig.created",
+  RIG_VERSION_CREATED: "rig_version.created",
+  RIG_VERSION_RELEASED: "rig_version.released",             // draft → experimental
+  RIG_VERSION_VALIDATED: "rig_version.validated",           // experimental → validated
+  RIG_VERSION_DEPRECATED: "rig_version.deprecated",         // * → deprecated
+  RIG_FORKED: "rig.forked",
+  CALIBRATION_EVIDENCE_ATTACHED: "calibration_evidence.attached",
+  RIG_ENTITLEMENT_GRANTED: "rig_entitlement.granted",
+  RIG_ENTITLEMENT_REVOKED: "rig_entitlement.revoked",
 } as const;
 
 export type AuditAction =
