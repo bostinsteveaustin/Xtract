@@ -1,18 +1,20 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { requireOrgAdmin } from "@/lib/api/auth";
+import { requireOrgRigAuthor } from "@/lib/api/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
  * Organisation admin layout. Middleware gates /org-admin/* by role; layout
- * re-checks and resolves the active organisation display name.
+ * re-checks via requireOrgRigAuthor (the broader of the two org-tier roles)
+ * and resolves the active organisation display name. Page-level checks
+ * further narrow /org-admin/members to org_admin only.
  */
 export default async function OrgAdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const auth = await requireOrgAdmin();
+  const auth = await requireOrgRigAuthor();
   if (auth.error) redirect("/workflows");
   if (!auth.activeOrgId) redirect("/workflows");
 
@@ -22,6 +24,10 @@ export default async function OrgAdminLayout({
     .select("name, slug")
     .eq("id", auth.activeOrgId)
     .single();
+
+  const isOrgAdmin =
+    auth.membership?.role === "org_admin" ||
+    auth.platformRole === "platform_admin";
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
@@ -40,15 +46,20 @@ export default async function OrgAdminLayout({
               Overview
             </Link>
             <Link
-              href="/org-admin/members"
+              href="/org-admin/rigs"
               className="text-slate-700 hover:underline"
             >
-              Members &amp; invitations
+              Rigs
             </Link>
-            <Link
-              href="/workflows"
-              className="text-slate-500 hover:underline"
-            >
+            {isOrgAdmin && (
+              <Link
+                href="/org-admin/members"
+                className="text-slate-700 hover:underline"
+              >
+                Members &amp; invitations
+              </Link>
+            )}
+            <Link href="/workflows" className="text-slate-500 hover:underline">
               ← Back to app
             </Link>
           </nav>

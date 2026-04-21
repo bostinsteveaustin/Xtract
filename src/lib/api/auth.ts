@@ -242,6 +242,47 @@ export async function requireOrgAdmin(): Promise<AuthResult> {
 }
 
 /**
+ * Convenience: require a role that can author Organisation Rigs (E-08 §7.2,
+ * Table 13). Passes for org_admin, rig_manager, any member holding the
+ * can_author_rigs capability flag, or platform_admin (cross-tenant bypass).
+ *
+ * Used to gate /org-admin/rigs/* surfaces and the Phase 3 org-rig actions.
+ */
+export async function requireOrgRigAuthor(): Promise<AuthResult> {
+  const auth = await requireAuth();
+  if (auth.error) return auth;
+  if (auth.platformRole === "platform_admin") return auth;
+
+  const role = auth.membership?.role;
+  if (role === "org_admin" || role === "rig_manager") return auth;
+
+  // Capability flag override — a member can be granted can_author_rigs
+  // without being promoted to rig_manager.
+  if (auth.membership && auth.activeOrgId) {
+    const admin = createAdminClient();
+    const { data: membershipRow } = await admin
+      .from("memberships")
+      .select("capability_flags")
+      .eq("user_id", auth.user.id)
+      .eq("organization_id", auth.activeOrgId)
+      .eq("status", "active")
+      .maybeSingle();
+    const flags = (membershipRow?.capability_flags ?? {}) as Record<
+      string,
+      unknown
+    >;
+    if (flags.can_author_rigs === true) return auth;
+  }
+
+  return {
+    error: NextResponse.json(
+      { error: "Org rig author role required" },
+      { status: 403 }
+    ),
+  };
+}
+
+/**
  * Confirm that a workflow belongs to the caller's workspace.
  * Uses the admin client (bypasses RLS) so the check works regardless
  * of the caller's Supabase role.

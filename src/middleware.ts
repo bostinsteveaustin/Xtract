@@ -3,9 +3,12 @@ import { NextResponse, type NextRequest } from "next/server";
 
 /**
  * Route gates:
- *   /admin/*      → requires platform_role != 'none' AND MFA enrolled
- *   /org-admin/*  → requires membership.role = 'org_admin' in active org
- *                   (or platform_admin, which bypasses this check)
+ *   /admin/*            → requires platform_role != 'none' AND MFA enrolled
+ *   /org-admin/*        → requires membership.role in ('org_admin', 'rig_manager')
+ *                         in the active org (or platform_admin bypass).
+ *                         Page-level checks narrow further: /org-admin/members
+ *                         and /org-admin/billing are org_admin only; /org-admin
+ *                         and /org-admin/rigs admit rig_manager too. (E-08 §7.2)
  *   /settings/mfa-setup → always reachable by authenticated users (self-service MFA)
  *
  * MFA enforcement: any user with platform_role != 'none' and no verified TOTP
@@ -111,6 +114,11 @@ export async function middleware(request: NextRequest) {
       const activeOrgId = request.cookies.get("xtract-active-org")?.value;
       let allowed = false;
 
+      // Middleware admits any org-tier role that can reach *some* /org-admin
+      // page; fine-grained narrowing (e.g., /members is org_admin only) is
+      // re-asserted in the page layouts via requireOrgAdmin.
+      const allowedRoles = new Set(["org_admin", "rig_manager"]);
+
       if (platformRole === "platform_admin") {
         // Platform admin is allowed on any /org-admin/* page in admin context.
         allowed = true;
@@ -122,7 +130,7 @@ export async function middleware(request: NextRequest) {
           .eq("organization_id", activeOrgId)
           .eq("status", "active")
           .maybeSingle();
-        allowed = membership?.role === "org_admin";
+        allowed = allowedRoles.has(membership?.role ?? "");
       } else {
         // No active org cookie → fall back to the single-membership heuristic.
         const { data: memberships } = await supabase
@@ -131,7 +139,8 @@ export async function middleware(request: NextRequest) {
           .eq("user_id", user.id)
           .eq("status", "active");
         allowed =
-          memberships?.length === 1 && memberships[0].role === "org_admin";
+          memberships?.length === 1 &&
+          allowedRoles.has(memberships[0].role ?? "");
       }
 
       if (!allowed) {
