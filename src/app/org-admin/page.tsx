@@ -84,9 +84,16 @@ export default async function OrgAdminOverview() {
               </Link>
             </li>
           )}
-          <li className="text-slate-500">
-            Billing <span className="ml-2 text-xs italic">(Phase 5)</span>
-          </li>
+          {isOrgAdmin && (
+            <li>
+              <Link
+                href="/org-admin/billing"
+                className="text-[#0EA5A0] hover:underline"
+              >
+                Credit balance and billing →
+              </Link>
+            </li>
+          )}
         </ul>
       </Card>
     </div>

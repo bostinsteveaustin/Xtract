@@ -21,6 +21,11 @@ import {
   buildScoringSchema,
 } from "@/lib/ctx/schema-builder";
 import { resolveWorkspaceRigPin } from "@/lib/api/rig-binding";
+import { preflightRunCost } from "@/lib/billing/preflight";
+import { debitRun } from "@/lib/billing/debit";
+import { ADMIN_CONTEXT_COOKIE } from "@/lib/api/auth";
+import { writeAuditEvent, auditActions } from "@/lib/api/audit";
+import { cookies } from "next/headers";
 
 // Allow up to 300s for extraction (Vercel Pro)
 export const maxDuration = 300;
@@ -32,9 +37,10 @@ export async function POST(
   try {
     const { id: workflowId } = await params;
     const body = await request.json();
-    const { documentSetId, ctxConfigurationId } = body as {
+    const { documentSetId, ctxConfigurationId, forceInsufficientCredits } = body as {
       documentSetId: string;
       ctxConfigurationId: string;
+      forceInsufficientCredits?: boolean;
     };
 
     if (!documentSetId || !ctxConfigurationId) {
@@ -97,10 +103,10 @@ export async function POST(
       );
     }
 
-    // Verify workflow exists
+    // Verify workflow exists + pull org for billing preflight (E-08 §4.7).
     const { data: workflow } = await admin
       .from("workflows")
-      .select("id")
+      .select("id, organization_id")
       .eq("id", workflowId)
       .single();
 
@@ -118,6 +124,90 @@ export async function POST(
     // same pair, or if the pinned version is draft / out-of-window deprecated.
     // Unbound workspaces insert NULL and skip the gating (legacy path).
     const rigPin = await resolveWorkspaceRigPin(admin, workflowId);
+
+    // ── Pre-flight credit check — E-08 §4.7 ─────────────────────────────────
+    // Hard block on insufficient balance. Platform_admin in admin-context for
+    // this org may pass `forceInsufficientCredits: true` to override; the
+    // force is audit-logged with the computed deficit. Unbound workspaces
+    // skip preflight and skip the post-completion debit — they're the legacy
+    // path that the end-of-Phase-5 rig_id NOT NULL flip retires.
+    let preflightCost = 0;
+    let forcedDeficit: number | null = null;
+    if (rigPin) {
+      // canForce resolution: platform_admin + admin-context cookie targeting
+      // this workflow's org + explicit `forceInsufficientCredits` body flag.
+      const cookieStore = await cookies();
+      const adminCtxRaw = cookieStore.get(ADMIN_CONTEXT_COOKIE)?.value;
+      let isAdminContextForThisOrg = false;
+      if (adminCtxRaw) {
+        try {
+          const parsed = JSON.parse(adminCtxRaw) as {
+            targetOrganizationId: string;
+            expiresAt: string;
+          };
+          isAdminContextForThisOrg =
+            parsed.targetOrganizationId === workflow.organization_id
+            && new Date(parsed.expiresAt) > new Date();
+        } catch {
+          // malformed cookie — treat as no admin-context
+        }
+      }
+      let canForce = false;
+      if (forceInsufficientCredits && isAdminContextForThisOrg) {
+        const { data: profile } = await admin
+          .from("profiles")
+          .select("platform_role")
+          .eq("id", user.id)
+          .maybeSingle();
+        canForce = profile?.platform_role === "platform_admin";
+      }
+
+      const preflight = await preflightRunCost(admin, {
+        orgId: workflow.organization_id,
+        rigId: rigPin.rigId,
+        rigVersion: rigPin.rigVersion,
+        documentSetId,
+        canForce,
+      });
+
+      if (!preflight.allowed) {
+        const status = preflight.reason === "insufficient_credits" ? 402 : 400;
+        return NextResponse.json(
+          {
+            error: preflight.reason,
+            message:
+              preflight.reason === "insufficient_credits"
+                ? "Your organisation does not have enough credits to run this extraction. Top up at /org-admin/billing."
+                : preflight.reason === "rig_not_priced"
+                ? "The bound Rig has no credit rate configured — contact your platform administrator."
+                : "Bind a Rig to this workspace before running an extraction.",
+            balance: preflight.balance,
+            cost: preflight.cost,
+            deficit: preflight.deficit,
+          },
+          { status }
+        );
+      }
+
+      preflightCost = preflight.cost;
+
+      if (preflight.forced) {
+        forcedDeficit = preflight.deficit;
+        await writeAuditEvent({
+          action: auditActions.RUN_FORCED_INSUFFICIENT_BALANCE,
+          resourceType: "workflow",
+          resourceId: workflowId,
+          targetOrganizationId: workflow.organization_id,
+          payload: {
+            rig_id: rigPin.rigId,
+            rig_version: rigPin.rigVersion,
+            cost: preflight.cost,
+            balance: preflight.balance,
+            deficit: preflight.deficit,
+          },
+        });
+      }
+    }
 
     const { data: run, error: runError } = await admin
       .from("workflow_runs")
@@ -369,6 +459,20 @@ export async function POST(
           completed_at: new Date().toISOString(),
         })
         .eq("id", workflowRunId);
+
+      // Post-completion credit debit — E-08 §4.7. Idempotent: a retry on the
+      // same runId is swallowed by the unique (org, run) partial index. Only
+      // bound-workspace Runs hit the ledger; legacy unbound Runs skipped
+      // preflight above and are also skipped here.
+      if (rigPin && preflightCost > 0) {
+        await debitRun(admin, {
+          orgId: workflow.organization_id,
+          runId: workflowRunId,
+          cost: preflightCost,
+          reference: forcedDeficit !== null ? "mode2-extract:forced" : "mode2-extract",
+          triggeringUserId: user.id,
+        });
+      }
 
       // Get summary
       const { data: resultObjects } = await admin

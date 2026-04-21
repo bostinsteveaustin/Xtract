@@ -938,12 +938,56 @@ export interface Database {
         };
         Relationships: [];
       };
+      credit_ledger: {
+        Row: {
+          id: string;
+          organization_id: string;
+          entry_type: "run_debit" | "credit_purchase" | "adjustment" | "refund";
+          amount: number;
+          run_id: string | null;
+          reference: string | null;
+          balance_after: number;
+          created_at: string;
+          created_by_user_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          entry_type: "run_debit" | "credit_purchase" | "adjustment" | "refund";
+          amount: number;
+          run_id?: string | null;
+          reference?: string | null;
+          balance_after: number;
+          created_at?: string;
+          created_by_user_id?: string | null;
+        };
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      resolve_credit_rate: {
+        Args: { p_org_id: string; p_rig_id: string; p_rig_version: string };
+        Returns: Json;
+      };
+      get_credit_balance: {
+        Args: { p_org_id: string };
+        Returns: number;
+      };
+      write_credit_ledger: {
+        Args: {
+          p_org_id: string;
+          p_entry_type: string;
+          p_amount: number;
+          p_run_id?: string | null;
+          p_reference?: string | null;
+          p_created_by_user_id?: string | null;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       relationship_type:

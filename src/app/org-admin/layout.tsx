@@ -59,6 +59,14 @@ export default async function OrgAdminLayout({
                 Members &amp; invitations
               </Link>
             )}
+            {isOrgAdmin && (
+              <Link
+                href="/org-admin/billing"
+                className="text-slate-700 hover:underline"
+              >
+                Billing
+              </Link>
+            )}
             <Link href="/workflows" className="text-slate-500 hover:underline">
               ← Back to app
             </Link>

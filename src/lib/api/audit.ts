@@ -76,6 +76,12 @@ export const auditActions = {
   WORKSPACE_RIG_BOUND: "workspace.rig_bound",
   WORKSPACE_RIG_UPGRADED: "workspace.rig_upgraded",
   WORKSPACE_RIG_UNBOUND: "workspace.rig_unbound",
+
+  // Billing (E-08 §4.7 — Phase 5)
+  RUN_FORCED_INSUFFICIENT_BALANCE: "run.forced_insufficient_balance",
+  BILLING_ADJUSTMENT_WRITTEN: "billing.adjustment_written",
+  BILLING_CREDIT_PURCHASED: "billing.credit_purchased",
+  BILLING_REFUND_ISSUED: "billing.refund_issued",
 } as const;
 
 export type AuditAction =
