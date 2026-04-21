@@ -707,6 +707,206 @@ export interface Database {
         };
         Relationships: [];
       };
+      // ─── E-08 Phase 2: Rigs ───────────────────────────────────────────────
+      rigs: {
+        Row: {
+          id: string;
+          organization_id: string | null;
+          tier: "published" | "organisation";
+          slug: string;
+          name: string;
+          category:
+            | "contract_intelligence"
+            | "controls_extraction"
+            | "ontology_building"
+            | "qa_review"
+            | "custom";
+          forked_from_rig_id: string | null;
+          forked_from_version: string | null;
+          current_state: "draft" | "experimental" | "validated" | "deprecated";
+          current_version: string;
+          created_by_user_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id?: string | null;
+          tier: "published" | "organisation";
+          slug: string;
+          name: string;
+          category:
+            | "contract_intelligence"
+            | "controls_extraction"
+            | "ontology_building"
+            | "qa_review"
+            | "custom";
+          forked_from_rig_id?: string | null;
+          forked_from_version?: string | null;
+          current_state?: "draft" | "experimental" | "validated" | "deprecated";
+          current_version?: string;
+          created_by_user_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string | null;
+          tier?: "published" | "organisation";
+          slug?: string;
+          name?: string;
+          category?:
+            | "contract_intelligence"
+            | "controls_extraction"
+            | "ontology_building"
+            | "qa_review"
+            | "custom";
+          forked_from_rig_id?: string | null;
+          forked_from_version?: string | null;
+          current_state?: "draft" | "experimental" | "validated" | "deprecated";
+          current_version?: string;
+          created_by_user_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      rig_versions: {
+        Row: {
+          id: string;
+          rig_id: string;
+          version: string;
+          state: "draft" | "experimental" | "validated" | "deprecated";
+          pipeline_pattern:
+            | "single_pass"
+            | "chunked"
+            | "verified"
+            | "reconciled"
+            | "composite";
+          ctx_bundle_refs: Json;
+          output_contract: Json;
+          validation_profile: Json;
+          calibration_evidence_id: string | null;
+          credit_rate_config: Json;
+          review_ui_config: Json;
+          methodology_statement: string;
+          released_at: string | null;
+          released_by_user_id: string | null;
+          deprecated_at: string | null;
+          deprecation_window_ends_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          rig_id: string;
+          version: string;
+          state?: "draft" | "experimental" | "validated" | "deprecated";
+          pipeline_pattern:
+            | "single_pass"
+            | "chunked"
+            | "verified"
+            | "reconciled"
+            | "composite";
+          ctx_bundle_refs?: Json;
+          output_contract?: Json;
+          validation_profile?: Json;
+          calibration_evidence_id?: string | null;
+          credit_rate_config?: Json;
+          review_ui_config?: Json;
+          methodology_statement?: string;
+          released_at?: string | null;
+          released_by_user_id?: string | null;
+          deprecated_at?: string | null;
+          deprecation_window_ends_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          rig_id?: string;
+          version?: string;
+          state?: "draft" | "experimental" | "validated" | "deprecated";
+          pipeline_pattern?:
+            | "single_pass"
+            | "chunked"
+            | "verified"
+            | "reconciled"
+            | "composite";
+          ctx_bundle_refs?: Json;
+          output_contract?: Json;
+          validation_profile?: Json;
+          calibration_evidence_id?: string | null;
+          credit_rate_config?: Json;
+          review_ui_config?: Json;
+          methodology_statement?: string;
+          released_at?: string | null;
+          released_by_user_id?: string | null;
+          deprecated_at?: string | null;
+          deprecation_window_ends_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      calibration_evidence: {
+        Row: {
+          id: string;
+          rig_version_id: string;
+          evidence_type:
+            | "noise_floor"
+            | "repeatability"
+            | "factorial_design"
+            | "domain_test";
+          payload: Json;
+          attached_by_user_id: string | null;
+          attached_at: string;
+        };
+        Insert: {
+          id?: string;
+          rig_version_id: string;
+          evidence_type:
+            | "noise_floor"
+            | "repeatability"
+            | "factorial_design"
+            | "domain_test";
+          payload?: Json;
+          attached_by_user_id?: string | null;
+          attached_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
+      rig_entitlements: {
+        Row: {
+          id: string;
+          organization_id: string;
+          rig_id: string;
+          granted_by_user_id: string | null;
+          granted_at: string;
+          revoked_at: string | null;
+          revoked_by_user_id: string | null;
+          credit_rate_override: Json | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          rig_id: string;
+          granted_by_user_id?: string | null;
+          granted_at?: string;
+          revoked_at?: string | null;
+          revoked_by_user_id?: string | null;
+          credit_rate_override?: Json | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          rig_id?: string;
+          granted_by_user_id?: string | null;
+          granted_at?: string;
+          revoked_at?: string | null;
+          revoked_by_user_id?: string | null;
+          credit_rate_override?: Json | null;
+        };
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
