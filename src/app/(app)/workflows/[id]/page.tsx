@@ -21,11 +21,71 @@ export default async function WorkspacePage({
 
   const { data: workflow } = await admin
     .from("workflows")
-    .select("id, name, type, description, workspace_ctx_id, template_id, created_at, updated_at")
+    .select(
+      "id, name, type, description, workspace_ctx_id, template_id, bound_rig_id, bound_rig_version, bound_at, created_at, updated_at"
+    )
     .eq("id", id)
     .single();
 
   if (!workflow) notFound();
 
-  return <WorkspaceDetailView workflow={workflow} />;
+  // Hydrate the bound Rig's human details in one extra round-trip — keeps
+  // the RunsSection header honest about tier/state without denormalising
+  // those fields onto workflows.
+  let boundRig: {
+    id: string;
+    slug: string;
+    name: string;
+    tier: "published" | "organisation";
+    current_version: string;
+  } | null = null;
+  let boundVersionState:
+    | "experimental"
+    | "validated"
+    | "deprecated"
+    | "draft"
+    | null = null;
+  let boundVersionWindowEnd: string | null = null;
+
+  if (workflow.bound_rig_id) {
+    const { data: rig } = await admin
+      .from("rigs")
+      .select("id, slug, name, tier, current_version")
+      .eq("id", workflow.bound_rig_id)
+      .maybeSingle();
+    if (rig) {
+      boundRig = {
+        id: rig.id,
+        slug: rig.slug,
+        name: rig.name,
+        tier: rig.tier,
+        current_version: rig.current_version,
+      };
+    }
+    if (workflow.bound_rig_version) {
+      const { data: rv } = await admin
+        .from("rig_versions")
+        .select("state, deprecation_window_ends_at")
+        .eq("rig_id", workflow.bound_rig_id)
+        .eq("version", workflow.bound_rig_version)
+        .maybeSingle();
+      if (rv) {
+        boundVersionState = rv.state as
+          | "experimental"
+          | "validated"
+          | "deprecated"
+          | "draft";
+        boundVersionWindowEnd = rv.deprecation_window_ends_at;
+      }
+    }
+  }
+
+  return (
+    <WorkspaceDetailView
+      workflow={workflow}
+      boundRig={boundRig}
+      boundVersionState={boundVersionState}
+      boundVersionWindowEnd={boundVersionWindowEnd}
+    />
+  );
 }

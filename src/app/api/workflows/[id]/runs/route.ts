@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth, verifyWorkflowOwnership } from "@/lib/api/auth";
+import { resolveWorkspaceRigPin } from "@/lib/api/rig-binding";
 import type { ContractExtractionResult, ConfidenceLevel } from "@/types/contract";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -155,6 +156,11 @@ export async function POST(
 
     const supabase = createAdminClient();
 
+    // E-08 §4.6 — snapshot the workspace's Rig pin onto this Run. The DB
+    // trigger in migration 025 cross-checks the pair against the workspace
+    // binding and auto-stamps is_experimental from the version's state.
+    const rigPin = await resolveWorkspaceRigPin(supabase, id);
+
     // Create the run record
     const { data: run, error } = await supabase
       .from("workflow_runs")
@@ -170,6 +176,8 @@ export async function POST(
         ctx_content:       ctxContent ?? null,
         started_at:        new Date().toISOString(),
         completed_at:      status === "completed" ? new Date().toISOString() : null,
+        rig_id:            rigPin?.rigId ?? null,
+        rig_version:       rigPin?.rigVersion ?? null,
       })
       .select()
       .single();

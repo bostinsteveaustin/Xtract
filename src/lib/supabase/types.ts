@@ -40,6 +40,8 @@ export interface Database {
           display_name: string | null;
           workspace_id: string | null;
           avatar_url: string | null;
+          platform_role: "none" | "platform_support" | "platform_admin";
+          mfa_required: boolean;
           created_at: string;
         };
         Insert: {
@@ -48,6 +50,8 @@ export interface Database {
           display_name?: string | null;
           workspace_id?: string | null;
           avatar_url?: string | null;
+          platform_role?: "none" | "platform_support" | "platform_admin";
+          mfa_required?: boolean;
           created_at?: string;
         };
         Update: {
@@ -56,6 +60,8 @@ export interface Database {
           display_name?: string | null;
           workspace_id?: string | null;
           avatar_url?: string | null;
+          platform_role?: "none" | "platform_support" | "platform_admin";
+          mfa_required?: boolean;
           created_at?: string;
         };
         Relationships: [];
@@ -174,7 +180,13 @@ export interface Database {
           type: string;
           description: string | null;
           workspace_ctx_id: string | null;
-          org_id: string | null;
+          // ── migration-017: org re-key ──
+          organization_id: string;
+          // ── migration-024: E-08 §4.6 Rig binding ──
+          bound_rig_id: string | null;
+          bound_rig_version: string | null;
+          bound_at: string | null;
+          bound_by_user_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -188,7 +200,11 @@ export interface Database {
           type?: string;
           description?: string | null;
           workspace_ctx_id?: string | null;
-          org_id?: string | null;
+          organization_id?: string;
+          bound_rig_id?: string | null;
+          bound_rig_version?: string | null;
+          bound_at?: string | null;
+          bound_by_user_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -202,7 +218,11 @@ export interface Database {
           type?: string;
           description?: string | null;
           workspace_ctx_id?: string | null;
-          org_id?: string | null;
+          organization_id?: string;
+          bound_rig_id?: string | null;
+          bound_rig_version?: string | null;
+          bound_at?: string | null;
+          bound_by_user_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -231,6 +251,13 @@ export interface Database {
           technical_ctx_id: string | null;
           credits_debited: number;
           output_envelope_id: string | null;
+          // ── migration-017: org re-key ──
+          organization_id: string;
+          // ── migration-025: E-08 §4.6 Rig pinning on Runs ──
+          rig_id: string | null;
+          rig_version: string | null;
+          is_experimental: boolean;
+          credit_cost: number;
           created_at: string;
         };
         Insert: {
@@ -254,6 +281,11 @@ export interface Database {
           technical_ctx_id?: string | null;
           credits_debited?: number;
           output_envelope_id?: string | null;
+          organization_id?: string;
+          rig_id?: string | null;
+          rig_version?: string | null;
+          is_experimental?: boolean;
+          credit_cost?: number;
           created_at?: string;
         };
         Update: {
@@ -277,6 +309,11 @@ export interface Database {
           technical_ctx_id?: string | null;
           credits_debited?: number;
           output_envelope_id?: string | null;
+          organization_id?: string;
+          rig_id?: string | null;
+          rig_version?: string | null;
+          is_experimental?: boolean;
+          credit_cost?: number;
           created_at?: string;
         };
         Relationships: [];
@@ -527,12 +564,430 @@ export interface Database {
         };
         Relationships: [];
       };
+      // ─── E-08 Platform Foundations ────────────────────────────────────────
+      organizations: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          status: "active" | "suspended" | "archived";
+          billing_contact_user_id: string | null;
+          stripe_customer_id: string | null;
+          branding: Json | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          status?: "active" | "suspended" | "archived";
+          billing_contact_user_id?: string | null;
+          stripe_customer_id?: string | null;
+          branding?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          slug?: string;
+          status?: "active" | "suspended" | "archived";
+          billing_contact_user_id?: string | null;
+          stripe_customer_id?: string | null;
+          branding?: Json | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      memberships: {
+        Row: {
+          id: string;
+          user_id: string;
+          organization_id: string;
+          role: "org_admin" | "rig_manager" | "member";
+          capability_flags: Json;
+          status: "active" | "invited" | "suspended";
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          organization_id: string;
+          role?: "org_admin" | "rig_manager" | "member";
+          capability_flags?: Json;
+          status?: "active" | "invited" | "suspended";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          organization_id?: string;
+          role?: "org_admin" | "rig_manager" | "member";
+          capability_flags?: Json;
+          status?: "active" | "invited" | "suspended";
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      audit_log: {
+        Row: {
+          id: string;
+          acting_user_id: string | null;
+          acting_user_platform_role: string | null;
+          target_organization_id: string | null;
+          admin_context_flag: boolean;
+          action: string;
+          resource_type: string | null;
+          resource_id: string | null;
+          payload: Json | null;
+          ip_address: string | null;
+          user_agent: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          acting_user_id?: string | null;
+          acting_user_platform_role?: string | null;
+          target_organization_id?: string | null;
+          admin_context_flag?: boolean;
+          action: string;
+          resource_type?: string | null;
+          resource_id?: string | null;
+          payload?: Json | null;
+          ip_address?: string | null;
+          user_agent?: string | null;
+          created_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
+      invite_tokens: {
+        Row: {
+          id: string;
+          organization_id: string;
+          email: string;
+          token: string;
+          invited_by_user_id: string;
+          role: "org_admin" | "rig_manager" | "member";
+          capability_flags: Json;
+          status: "pending" | "accepted" | "expired" | "revoked";
+          expires_at: string;
+          created_at: string;
+          accepted_at: string | null;
+          accepted_by_user_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          email: string;
+          token: string;
+          invited_by_user_id: string;
+          role?: "org_admin" | "rig_manager" | "member";
+          capability_flags?: Json;
+          status?: "pending" | "accepted" | "expired" | "revoked";
+          expires_at?: string;
+          created_at?: string;
+          accepted_at?: string | null;
+          accepted_by_user_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          email?: string;
+          token?: string;
+          invited_by_user_id?: string;
+          role?: "org_admin" | "rig_manager" | "member";
+          capability_flags?: Json;
+          status?: "pending" | "accepted" | "expired" | "revoked";
+          expires_at?: string;
+          created_at?: string;
+          accepted_at?: string | null;
+          accepted_by_user_id?: string | null;
+        };
+        Relationships: [];
+      };
+      workspace_memberships: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          organization_id: string;
+          user_id: string;
+          role: "workspace_owner" | "workspace_editor" | "workspace_viewer";
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          organization_id: string;
+          user_id: string;
+          role?: "workspace_owner" | "workspace_editor" | "workspace_viewer";
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          workspace_id?: string;
+          organization_id?: string;
+          user_id?: string;
+          role?: "workspace_owner" | "workspace_editor" | "workspace_viewer";
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      // ─── E-08 Phase 2: Rigs ───────────────────────────────────────────────
+      rigs: {
+        Row: {
+          id: string;
+          organization_id: string | null;
+          tier: "published" | "organisation";
+          slug: string;
+          name: string;
+          category:
+            | "contract_intelligence"
+            | "controls_extraction"
+            | "ontology_building"
+            | "qa_review"
+            | "custom";
+          forked_from_rig_id: string | null;
+          forked_from_version: string | null;
+          current_state: "draft" | "experimental" | "validated" | "deprecated";
+          current_version: string;
+          created_by_user_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          organization_id?: string | null;
+          tier: "published" | "organisation";
+          slug: string;
+          name: string;
+          category:
+            | "contract_intelligence"
+            | "controls_extraction"
+            | "ontology_building"
+            | "qa_review"
+            | "custom";
+          forked_from_rig_id?: string | null;
+          forked_from_version?: string | null;
+          current_state?: "draft" | "experimental" | "validated" | "deprecated";
+          current_version?: string;
+          created_by_user_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string | null;
+          tier?: "published" | "organisation";
+          slug?: string;
+          name?: string;
+          category?:
+            | "contract_intelligence"
+            | "controls_extraction"
+            | "ontology_building"
+            | "qa_review"
+            | "custom";
+          forked_from_rig_id?: string | null;
+          forked_from_version?: string | null;
+          current_state?: "draft" | "experimental" | "validated" | "deprecated";
+          current_version?: string;
+          created_by_user_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      rig_versions: {
+        Row: {
+          id: string;
+          rig_id: string;
+          version: string;
+          state: "draft" | "experimental" | "validated" | "deprecated";
+          pipeline_pattern:
+            | "single_pass"
+            | "chunked"
+            | "verified"
+            | "reconciled"
+            | "composite";
+          ctx_bundle_refs: Json;
+          output_contract: Json;
+          validation_profile: Json;
+          calibration_evidence_id: string | null;
+          credit_rate_config: Json;
+          review_ui_config: Json;
+          methodology_statement: string;
+          released_at: string | null;
+          released_by_user_id: string | null;
+          deprecated_at: string | null;
+          deprecation_window_ends_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          rig_id: string;
+          version: string;
+          state?: "draft" | "experimental" | "validated" | "deprecated";
+          pipeline_pattern:
+            | "single_pass"
+            | "chunked"
+            | "verified"
+            | "reconciled"
+            | "composite";
+          ctx_bundle_refs?: Json;
+          output_contract?: Json;
+          validation_profile?: Json;
+          calibration_evidence_id?: string | null;
+          credit_rate_config?: Json;
+          review_ui_config?: Json;
+          methodology_statement?: string;
+          released_at?: string | null;
+          released_by_user_id?: string | null;
+          deprecated_at?: string | null;
+          deprecation_window_ends_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          rig_id?: string;
+          version?: string;
+          state?: "draft" | "experimental" | "validated" | "deprecated";
+          pipeline_pattern?:
+            | "single_pass"
+            | "chunked"
+            | "verified"
+            | "reconciled"
+            | "composite";
+          ctx_bundle_refs?: Json;
+          output_contract?: Json;
+          validation_profile?: Json;
+          calibration_evidence_id?: string | null;
+          credit_rate_config?: Json;
+          review_ui_config?: Json;
+          methodology_statement?: string;
+          released_at?: string | null;
+          released_by_user_id?: string | null;
+          deprecated_at?: string | null;
+          deprecation_window_ends_at?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      calibration_evidence: {
+        Row: {
+          id: string;
+          rig_version_id: string;
+          evidence_type:
+            | "noise_floor"
+            | "repeatability"
+            | "factorial_design"
+            | "domain_test";
+          payload: Json;
+          attached_by_user_id: string | null;
+          attached_at: string;
+        };
+        Insert: {
+          id?: string;
+          rig_version_id: string;
+          evidence_type:
+            | "noise_floor"
+            | "repeatability"
+            | "factorial_design"
+            | "domain_test";
+          payload?: Json;
+          attached_by_user_id?: string | null;
+          attached_at?: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
+      rig_entitlements: {
+        Row: {
+          id: string;
+          organization_id: string;
+          rig_id: string;
+          granted_by_user_id: string | null;
+          granted_at: string;
+          revoked_at: string | null;
+          revoked_by_user_id: string | null;
+          credit_rate_override: Json | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          rig_id: string;
+          granted_by_user_id?: string | null;
+          granted_at?: string;
+          revoked_at?: string | null;
+          revoked_by_user_id?: string | null;
+          credit_rate_override?: Json | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          rig_id?: string;
+          granted_by_user_id?: string | null;
+          granted_at?: string;
+          revoked_at?: string | null;
+          revoked_by_user_id?: string | null;
+          credit_rate_override?: Json | null;
+        };
+        Relationships: [];
+      };
+      credit_ledger: {
+        Row: {
+          id: string;
+          organization_id: string;
+          entry_type: "run_debit" | "credit_purchase" | "adjustment" | "refund";
+          amount: number;
+          run_id: string | null;
+          reference: string | null;
+          balance_after: number;
+          created_at: string;
+          created_by_user_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          entry_type: "run_debit" | "credit_purchase" | "adjustment" | "refund";
+          amount: number;
+          run_id?: string | null;
+          reference?: string | null;
+          balance_after: number;
+          created_at?: string;
+          created_by_user_id?: string | null;
+        };
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      resolve_credit_rate: {
+        Args: { p_org_id: string; p_rig_id: string; p_rig_version: string };
+        Returns: Json;
+      };
+      get_credit_balance: {
+        Args: { p_org_id: string };
+        Returns: number;
+      };
+      write_credit_ledger: {
+        Args: {
+          p_org_id: string;
+          p_entry_type: string;
+          p_amount: number;
+          p_run_id?: string | null;
+          p_reference?: string | null;
+          p_created_by_user_id?: string | null;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       relationship_type:

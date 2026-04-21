@@ -8,7 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import {
   PanelLeftClose, PanelLeftOpen, ChevronLeft,
   FlaskConical, FileText, Brain, Settings2,
-  User, LogOut,
+  User, LogOut, Cpu,
 } from "lucide-react";
 import { WORKSPACE_TYPE_REGISTRY } from "@/lib/pipeline/workspace-registry";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,7 @@ const TYPE_COLOR: Record<string, string> = {
 
 const NAV_ITEMS = [
   { id: "pipeline-runs", label: "Pipeline Runs",    icon: FlaskConical },
+  { id: "rig",           label: "Rig",              icon: Cpu          },
   { id: "documents",     label: "Source Documents", icon: FileText     },
   { id: "context",       label: "Context",          icon: Brain        },
   { id: "settings",      label: "Settings",         icon: Settings2    },
