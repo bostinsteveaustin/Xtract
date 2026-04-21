@@ -10,13 +10,27 @@ export default async function OrgMembersPage() {
   if (auth.error || !auth.activeOrgId) return null;
 
   const admin = createAdminClient();
-  const { data: members } = await admin
+  const { data: rawMembers } = await admin
     .from("memberships")
-    .select(
-      "id, user_id, role, status, created_at, profiles:user_id(email, display_name)"
-    )
+    .select("id, user_id, role, status, created_at")
     .eq("organization_id", auth.activeOrgId)
     .order("created_at", { ascending: true });
+
+  const memberUserIds = (rawMembers ?? []).map((m) => m.user_id);
+  const { data: memberProfiles } = memberUserIds.length
+    ? await admin
+        .from("profiles")
+        .select("id, email, display_name")
+        .in("id", memberUserIds)
+    : { data: [] };
+  const profileMap = new Map<string, { email: string; display_name: string | null }>();
+  for (const p of memberProfiles ?? []) {
+    profileMap.set(p.id, { email: p.email, display_name: p.display_name });
+  }
+  const members = (rawMembers ?? []).map((m) => ({
+    ...m,
+    profiles: profileMap.get(m.user_id) ?? null,
+  }));
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -40,18 +54,10 @@ export default async function OrgMembersPage() {
 
       <Card className="p-6">
         <h2 className="mb-4 text-lg font-semibold text-slate-900">
-          Members ({members?.length ?? 0})
+          Members ({members.length})
         </h2>
         <ul className="divide-y divide-slate-200">
-          {(members ?? []).map((row) => {
-            const m = row as unknown as {
-              id: string;
-              user_id: string;
-              role: string;
-              status: string;
-              created_at: string;
-              profiles: { email: string; display_name: string | null } | null;
-            };
+          {members.map((m) => {
             const profile = m.profiles;
             return (
               <li
@@ -75,7 +81,7 @@ export default async function OrgMembersPage() {
               </li>
             );
           })}
-          {(!members || members.length === 0) && (
+          {members.length === 0 && (
             <li className="py-4 text-sm text-slate-500">No members.</li>
           )}
         </ul>

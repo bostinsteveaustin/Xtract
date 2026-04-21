@@ -16,13 +16,44 @@ import { Badge } from "@/components/ui/badge";
  */
 export default async function AuditLogPage() {
   const admin = createAdminClient();
-  const { data: rows } = await admin
+  const { data: rawRows } = await admin
     .from("audit_log")
     .select(
-      "id, created_at, action, acting_user_id, acting_user_platform_role, target_organization_id, admin_context_flag, resource_type, resource_id, payload, organizations:target_organization_id(name, slug), profiles:acting_user_id(email, display_name)"
+      "id, created_at, action, acting_user_id, acting_user_platform_role, target_organization_id, admin_context_flag, resource_type, resource_id, payload"
     )
     .order("created_at", { ascending: false })
     .limit(200);
+
+  // Resolve org + user profile in two follow-up queries — avoids Supabase's
+  // embedded-join ambiguity without declared FK relationships.
+  const orgIds = Array.from(
+    new Set((rawRows ?? []).map((r) => r.target_organization_id).filter(Boolean))
+  ) as string[];
+  const userIds = Array.from(
+    new Set((rawRows ?? []).map((r) => r.acting_user_id).filter(Boolean))
+  ) as string[];
+
+  const [orgLookup, profileLookup] = await Promise.all([
+    orgIds.length
+      ? admin.from("organizations").select("id, name, slug").in("id", orgIds)
+      : Promise.resolve({ data: [] as { id: string; name: string; slug: string }[] }),
+    userIds.length
+      ? admin.from("profiles").select("id, email, display_name").in("id", userIds)
+      : Promise.resolve({ data: [] as { id: string; email: string; display_name: string | null }[] }),
+  ]);
+  const orgMap = new Map<string, { name: string; slug: string }>();
+  for (const o of orgLookup.data ?? []) orgMap.set(o.id, { name: o.name, slug: o.slug });
+  const profileMap = new Map<string, { email: string; display_name: string | null }>();
+  for (const p of profileLookup.data ?? [])
+    profileMap.set(p.id, { email: p.email, display_name: p.display_name });
+
+  const rows = (rawRows ?? []).map((r) => ({
+    ...r,
+    organizations: r.target_organization_id
+      ? orgMap.get(r.target_organization_id) ?? null
+      : null,
+    profiles: r.acting_user_id ? profileMap.get(r.acting_user_id) ?? null : null,
+  }));
 
   return (
     <div className="mx-auto max-w-7xl space-y-4">
@@ -45,21 +76,7 @@ export default async function AuditLogPage() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {(rows ?? []).map((row) => {
-            const r = row as unknown as {
-              id: string;
-              created_at: string;
-              action: string;
-              acting_user_id: string | null;
-              acting_user_platform_role: string | null;
-              target_organization_id: string | null;
-              admin_context_flag: boolean;
-              resource_type: string | null;
-              resource_id: string | null;
-              payload: unknown;
-              organizations: { name: string; slug: string } | null;
-              profiles: { email: string; display_name: string | null } | null;
-            };
+          {rows.map((r) => {
             const org = r.organizations;
             const profile = r.profiles;
             return (
@@ -116,7 +133,7 @@ export default async function AuditLogPage() {
               </TableRow>
             );
           })}
-          {(!rows || rows.length === 0) && (
+          {rows.length === 0 && (
             <TableRow>
               <TableCell colSpan={5} className="py-6 text-center text-slate-500">
                 No audit events yet.

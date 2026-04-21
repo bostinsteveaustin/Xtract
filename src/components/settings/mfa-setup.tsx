@@ -163,9 +163,10 @@ export function MfaSetup() {
           scan the QR code or enter the secret manually.
         </p>
         <div className="flex gap-6">
-          <div
+          <img
+            src={unverifiedFactor.qrCode}
+            alt="Scan with your authenticator app"
             className="h-40 w-40 rounded border bg-white p-2"
-            dangerouslySetInnerHTML={{ __html: unverifiedFactor.qrCode }}
           />
           <div className="flex-1 text-sm">
             <Label>Secret (manual entry)</Label>

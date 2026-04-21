@@ -19,11 +19,29 @@ export default async function OrganisationDetailPage({ params }: Props) {
     .single();
   if (!org) notFound();
 
-  const { data: members } = await admin
+  // Two-query resolution avoids Supabase's embedded-join ambiguity when FKs
+  // aren't declared in the generated Relationships metadata.
+  const { data: rawMembers } = await admin
     .from("memberships")
-    .select("id, user_id, role, status, created_at, profiles:user_id(email, display_name)")
+    .select("id, user_id, role, status, created_at")
     .eq("organization_id", org.id)
     .order("created_at", { ascending: true });
+
+  const memberUserIds = (rawMembers ?? []).map((m) => m.user_id);
+  const { data: memberProfiles } = memberUserIds.length
+    ? await admin
+        .from("profiles")
+        .select("id, email, display_name")
+        .in("id", memberUserIds)
+    : { data: [] };
+  const profileMap = new Map<string, { email: string; display_name: string | null }>();
+  for (const p of memberProfiles ?? []) {
+    profileMap.set(p.id, { email: p.email, display_name: p.display_name });
+  }
+  const members = (rawMembers ?? []).map((m) => ({
+    ...m,
+    profiles: profileMap.get(m.user_id) ?? null,
+  }));
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -46,15 +64,7 @@ export default async function OrganisationDetailPage({ params }: Props) {
       <Card className="p-6">
         <h2 className="mb-3 text-lg font-semibold text-slate-900">Members</h2>
         <ul className="divide-y divide-slate-200">
-          {(members ?? []).map((row) => {
-            const m = row as unknown as {
-              id: string;
-              user_id: string;
-              role: string;
-              status: string;
-              created_at: string;
-              profiles: { email: string; display_name: string | null } | null;
-            };
+          {members.map((m) => {
             const profile = m.profiles;
             return (
               <li
@@ -85,7 +95,7 @@ export default async function OrganisationDetailPage({ params }: Props) {
               </li>
             );
           })}
-          {(!members || members.length === 0) && (
+          {members.length === 0 && (
             <li className="py-4 text-sm text-slate-500">No members.</li>
           )}
         </ul>
