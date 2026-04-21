@@ -25,10 +25,14 @@ import {
   getPipelinesForType,
   type WorkspaceTypeDefinition,
 } from "@/lib/pipeline/workspace-registry";
+import {
+  RigBindingSection,
+  type BoundRigInfo,
+} from "@/components/workspace/rig-binding-section";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ActiveSection = "pipeline-runs" | "documents" | "context" | "settings";
+type ActiveSection = "pipeline-runs" | "rig" | "documents" | "context" | "settings";
 
 interface WorkflowRun {
   id: string;
@@ -56,6 +60,9 @@ interface WorkflowDetail {
   description: string | null;
   workspace_ctx_id: string | null;
   template_id: string | null;
+  bound_rig_id: string | null;
+  bound_rig_version: string | null;
+  bound_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -1032,9 +1039,22 @@ function SettingsSection({
 
 interface WorkspaceDetailViewProps {
   workflow: WorkflowDetail;
+  boundRig: BoundRigInfo | null;
+  boundVersionState:
+    | "experimental"
+    | "validated"
+    | "deprecated"
+    | "draft"
+    | null;
+  boundVersionWindowEnd: string | null;
 }
 
-export function WorkspaceDetailView({ workflow: initialWorkflow }: WorkspaceDetailViewProps) {
+export function WorkspaceDetailView({
+  workflow: initialWorkflow,
+  boundRig,
+  boundVersionState,
+  boundVersionWindowEnd,
+}: WorkspaceDetailViewProps) {
   const [workflow, setWorkflow] = useState(initialWorkflow);
   const [newRunOpen, setNewRunOpen] = useState(false);
   const searchParams = useSearchParams();
@@ -1064,6 +1084,9 @@ export function WorkspaceDetailView({ workflow: initialWorkflow }: WorkspaceDeta
           New Pipeline Run
         </button>
       ),
+    },
+    rig: {
+      title: "Rig",
     },
     documents: {
       title: "Source Documents",
@@ -1102,6 +1125,15 @@ export function WorkspaceDetailView({ workflow: initialWorkflow }: WorkspaceDeta
         <div className="flex-1 overflow-y-auto min-w-0">
           {activeSection === "pipeline-runs" && (
             <RunsSection workflowId={workflow.id} onNewRun={() => setNewRunOpen(true)} />
+          )}
+          {activeSection === "rig" && (
+            <RigBindingSection
+              workflowId={workflow.id}
+              boundRig={boundRig}
+              boundRigVersion={workflow.bound_rig_version}
+              boundVersionState={boundVersionState}
+              boundVersionWindowEnd={boundVersionWindowEnd}
+            />
           )}
           {activeSection === "documents" && (
             <DocumentsTab ref={docsRef} workflowId={workflow.id} />

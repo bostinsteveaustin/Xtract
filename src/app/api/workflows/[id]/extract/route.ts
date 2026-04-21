@@ -20,6 +20,7 @@ import {
   buildRelationshipSchema,
   buildScoringSchema,
 } from "@/lib/ctx/schema-builder";
+import { resolveWorkspaceRigPin } from "@/lib/api/rig-binding";
 
 // Allow up to 300s for extraction (Vercel Pro)
 export const maxDuration = 300;
@@ -110,7 +111,14 @@ export async function POST(
       );
     }
 
-    // Create workflow run
+    // Resolve the Rig pin on this workspace — E-08 §4.6. If the workspace is
+    // bound to a Rig, every Run carries that exact (rig_id, rig_version) pair
+    // as an immutable snapshot. The DB trigger in migration 025 will refuse
+    // the insert if the workspace is bound but the Run doesn't pin to the
+    // same pair, or if the pinned version is draft / out-of-window deprecated.
+    // Unbound workspaces insert NULL and skip the gating (legacy path).
+    const rigPin = await resolveWorkspaceRigPin(admin, workflowId);
+
     const { data: run, error: runError } = await admin
       .from("workflow_runs")
       .insert({
@@ -121,6 +129,8 @@ export async function POST(
         started_at: new Date().toISOString(),
         run_by: user.id,
         node_states: {},
+        rig_id: rigPin?.rigId ?? null,
+        rig_version: rigPin?.rigVersion ?? null,
       })
       .select()
       .single();

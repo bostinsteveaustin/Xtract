@@ -180,7 +180,13 @@ export interface Database {
           type: string;
           description: string | null;
           workspace_ctx_id: string | null;
-          org_id: string | null;
+          // ── migration-017: org re-key ──
+          organization_id: string;
+          // ── migration-024: E-08 §4.6 Rig binding ──
+          bound_rig_id: string | null;
+          bound_rig_version: string | null;
+          bound_at: string | null;
+          bound_by_user_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -194,7 +200,11 @@ export interface Database {
           type?: string;
           description?: string | null;
           workspace_ctx_id?: string | null;
-          org_id?: string | null;
+          organization_id?: string;
+          bound_rig_id?: string | null;
+          bound_rig_version?: string | null;
+          bound_at?: string | null;
+          bound_by_user_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -208,7 +218,11 @@ export interface Database {
           type?: string;
           description?: string | null;
           workspace_ctx_id?: string | null;
-          org_id?: string | null;
+          organization_id?: string;
+          bound_rig_id?: string | null;
+          bound_rig_version?: string | null;
+          bound_at?: string | null;
+          bound_by_user_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -237,6 +251,13 @@ export interface Database {
           technical_ctx_id: string | null;
           credits_debited: number;
           output_envelope_id: string | null;
+          // ── migration-017: org re-key ──
+          organization_id: string;
+          // ── migration-025: E-08 §4.6 Rig pinning on Runs ──
+          rig_id: string | null;
+          rig_version: string | null;
+          is_experimental: boolean;
+          credit_cost: number;
           created_at: string;
         };
         Insert: {
@@ -260,6 +281,11 @@ export interface Database {
           technical_ctx_id?: string | null;
           credits_debited?: number;
           output_envelope_id?: string | null;
+          organization_id?: string;
+          rig_id?: string | null;
+          rig_version?: string | null;
+          is_experimental?: boolean;
+          credit_cost?: number;
           created_at?: string;
         };
         Update: {
@@ -283,6 +309,11 @@ export interface Database {
           technical_ctx_id?: string | null;
           credits_debited?: number;
           output_envelope_id?: string | null;
+          organization_id?: string;
+          rig_id?: string | null;
+          rig_version?: string | null;
+          is_experimental?: boolean;
+          credit_cost?: number;
           created_at?: string;
         };
         Relationships: [];

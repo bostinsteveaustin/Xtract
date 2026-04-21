@@ -71,6 +71,11 @@ export const auditActions = {
   CALIBRATION_EVIDENCE_ATTACHED: "calibration_evidence.attached",
   RIG_ENTITLEMENT_GRANTED: "rig_entitlement.granted",
   RIG_ENTITLEMENT_REVOKED: "rig_entitlement.revoked",
+
+  // Workspace bindings (E-08 §4.6)
+  WORKSPACE_RIG_BOUND: "workspace.rig_bound",
+  WORKSPACE_RIG_UPGRADED: "workspace.rig_upgraded",
+  WORKSPACE_RIG_UNBOUND: "workspace.rig_unbound",
 } as const;
 
 export type AuditAction =
